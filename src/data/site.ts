@@ -1,4 +1,5 @@
-const IMG = 'https://pizzeria-ledi.de/wp-content/uploads';
+/** Photos live in public/images (copied from the old website). */
+const IMG = '/images';
 
 export type LocationId = 'ledi' | 'due';
 
@@ -21,11 +22,16 @@ const maps = (street: string, postalCode: string) => {
 /** Shared by both restaurants. */
 export const brand = {
   since: 'März 2011',
+  /** Shown in the footer under the opening hours. */
+  payment: [
+    { icon: 'card', label: 'EC-Karte (girocard)' },
+    { icon: 'cash', label: 'Bar' },
+  ] as const,
   social: {
     facebook: 'https://de-de.facebook.com/pizzerialedi/',
     instagram: 'https://www.instagram.com/ledipizzeria',
   },
-  weeklyMenuPdf: `${IMG}/2024/01/SwiftScan-10.01.2024-18.26.pdf`,
+  weeklyMenuPdf: '/files/wochenkarte.pdf',
 };
 
 export const locations = {
@@ -89,19 +95,18 @@ export const navFor = (loc: LocationId) => [
 ];
 
 export const images = {
-  logo: `${IMG}/2021/08/logoledi.png`,
-  hero: `${IMG}/2021/08/arthur-brognoli-MjnQ2LqzfJk-unsplash-scaled-1.jpeg`,
-  outside: `${IMG}/2021/09/Aussenbereich_5.jpg`,
+  hero: `${IMG}/hero.webp`,
+  outside: `${IMG}/aussenbereich.webp`,
   gallery: [
-    { src: `${IMG}/2021/09/Innenbereich_4.jpg`, alt: 'Innenbereich der Trattoria' },
-    { src: `${IMG}/2021/09/Caramelle-Bon-Bon-Nudel-gefu%CC%88llt-mit-Mascarpone-und-Walnu%CC%88ssen-in-Gorgonzola-Sahnesauce-auf-Rucola-und-Parmesan.jpg`, alt: 'Caramelle gefüllt mit Mascarpone und Walnüssen in Gorgonzola-Sahnesauce' },
-    { src: `${IMG}/2021/09/Innenbereich_3.jpg`, alt: 'Gemütlicher Gastraum' },
-    { src: `${IMG}/2021/09/Entrecote%CC%81-vom-Grill-mit-Rosmarin-Knoblauch-dazu-und-frischem-Tages-Gemu%CC%88se.jpg`, alt: 'Entrecôte vom Grill mit Rosmarin und Tagesgemüse' },
-    { src: `${IMG}/2021/09/Grossgarnelen-vom-Grill-auf-Rucola.jpg`, alt: 'Großgarnelen vom Grill auf Rucola' },
-    { src: `${IMG}/2021/09/Innenbereich_5.jpg`, alt: 'Tische im Innenbereich' },
-    { src: `${IMG}/2021/09/Triangolini-Rote-Bete-gefu%CC%88llt-mit-Ziegenka%CC%88se-und-Honig-in-Butter-Salbeisauce.jpg`, alt: 'Rote-Bete-Triangolini mit Ziegenkäse und Honig' },
-    { src: `${IMG}/2021/09/Schweinefiletmedaillon-mit-Salbeibutter-und-frischem-Tages-Gemu%CC%88se.jpg`, alt: 'Schweinefiletmedaillons mit Salbeibutter' },
-    { src: `${IMG}/2021/09/Rote-Bete-Kartoffelgnochi-gefu%CC%88llt-mit-Mascarpone-und-Walnu%CC%88ssen-in-leichte-Tomatensauce.jpg`, alt: 'Rote-Bete-Gnocchi mit Mascarpone und Walnüssen' },
+    { src: `${IMG}/innen-4.webp`, alt: 'Innenbereich der Trattoria' },
+    { src: `${IMG}/caramelle.webp`, alt: 'Caramelle gefüllt mit Mascarpone und Walnüssen in Gorgonzola-Sahnesauce' },
+    { src: `${IMG}/innen-3.webp`, alt: 'Gemütlicher Gastraum' },
+    { src: `${IMG}/entrecote.webp`, alt: 'Entrecôte vom Grill mit Rosmarin und Tagesgemüse' },
+    { src: `${IMG}/garnelen.webp`, alt: 'Großgarnelen vom Grill auf Rucola' },
+    { src: `${IMG}/innen-5.webp`, alt: 'Tische im Innenbereich' },
+    { src: `${IMG}/triangolini.webp`, alt: 'Rote-Bete-Triangolini mit Ziegenkäse und Honig' },
+    { src: `${IMG}/schweinefilet.webp`, alt: 'Schweinefiletmedaillons mit Salbeibutter' },
+    { src: `${IMG}/gnocchi.webp`, alt: 'Rote-Bete-Gnocchi mit Mascarpone und Walnüssen' },
   ],
 };
 

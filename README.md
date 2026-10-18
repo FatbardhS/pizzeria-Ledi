@@ -29,7 +29,7 @@ Die Seiten liegen einmal in `src/pages/[loc]/` und werden für beide Standorte e
 
 Schriften liegen lokal (Fontsource), Google Maps lädt erst nach Zustimmung im Cookie-Banner.
 
-Bilder werden aktuell noch von der alten Website (`pizzeria-ledi.de/wp-content/uploads`) geladen.
+Fotos liegen in `public/images` (von der alten Website übernommen, als WebP verkleinert), die Wochenkarte in `public/files`. Titelbild (Holzofen): Arthur Brognoli / Unsplash.
 
 ## Veröffentlichen
 

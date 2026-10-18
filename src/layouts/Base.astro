@@ -46,7 +46,7 @@ const jsonLd = site && {
   telephone: '+49 30 63962115',
   email: site.email,
   url: `https://pizzeria-ledi.de/${site.id}`,
-  image: images.hero,
+  image: new URL(images.hero, Astro.site).href,
   address: {
     '@type': 'PostalAddress',
     streetAddress: site.address.street,
@@ -61,6 +61,8 @@ const jsonLd = site && {
     closes: range.split('-')[1],
   })),
   acceptsReservations: true,
+  paymentAccepted: 'Cash, Debit Card (girocard)',
+  currenciesAccepted: 'EUR',
   hasMenu: `https://pizzeria-ledi.de/${site.id}/speisekarte`,
 };
 ---
@@ -75,7 +77,7 @@ const jsonLd = site && {
     <meta name="description" content={description} />
     <meta property="og:title" content={fullTitle} />
     <meta property="og:description" content={description} />
-    <meta property="og:image" content={images.hero} />
+    <meta property="og:image" content={new URL(images.hero, Astro.site).href} />
     <meta property="og:type" content="website" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}

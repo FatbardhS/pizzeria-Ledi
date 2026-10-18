@@ -49,6 +49,17 @@ const { location: site } = Astro.props;
           ))
         }
       </dl>
+      <div class="mt-4 flex flex-wrap items-center gap-2">
+        <span class="text-sm text-cream/60">Bezahlen mit:</span>
+        {
+          brand.payment.map((p) => (
+            <span class="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3 py-1.5 text-sm font-medium text-cream">
+              <Icon name={p.icon} class="size-4 text-gold" />
+              {p.label}
+            </span>
+          ))
+        }
+      </div>
       <a href={`/${site.id}/reservierung`} class="btn-primary mt-6 w-full sm:w-auto">
         <Icon name="calendar" class="size-4" /> Tisch reservieren
       </a>
