@@ -109,7 +109,7 @@ export const reviews = [
   {
     title: 'Service nett & flott, tadellos!',
     text: 'Wirklich gute Pizza: Dünner Boden, klassischer Steinofen, richtig guter Teig, gut belegt – umso bemerkenswerter, wenn man das umliegende Pizza-Angebot vergleicht!',
-    author: 'Florian Schuster',
+    author: 'Florian S.',
   },
   {
     title: 'Hervorragende Wochenkarte',
@@ -119,11 +119,11 @@ export const reviews = [
   {
     title: 'Sehr gute Pizza',
     text: 'Personal sehr zuvorkommend. Man kann gemütlich essen, die Preise sind angemessen. Der Inhaber hat den Laden sehr gut im Griff, auch wenn es voll ist.',
-    author: 'Andreas Haubold',
+    author: 'Andreas H.',
   },
   {
     title: 'Sehr netter Laden',
     text: 'Speisen und Getränke sind vorzüglich. Bedienung ist super. Macht weiter so und bis zum nächsten Mal!',
-    author: 'Kerstin Bihari',
+    author: 'Kerstin B.',
   },
 ];

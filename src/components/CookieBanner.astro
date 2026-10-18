@@ -1,0 +1,237 @@
+---
+// Cookie consent: "necessary" is always on, "external media" (Google Maps) only after consent.
+// The choice is kept in localStorage ('ledi-consent'); any [data-cookie-settings] element reopens the dialog.
+---
+
+<div id="cookie-banner" role="dialog" aria-modal="false" aria-labelledby="cookie-title" hidden>
+  <div class="cookie-card">
+    <div class="flex items-start gap-4">
+      <svg viewBox="0 0 48 48" class="size-11 shrink-0" aria-hidden="true">
+        <path d="M24 4a20 20 0 1 0 20 20 6 6 0 0 1-7-6 6 6 0 0 1-6-7 6 6 0 0 1-7-7Z" fill="#e7b56a" />
+        <path d="M24 4a20 20 0 1 0 20 20 6 6 0 0 1-7-6 6 6 0 0 1-6-7 6 6 0 0 1-7-7Z" fill="none" stroke="#a86a2c" stroke-width="1.5" />
+        <circle cx="16" cy="20" r="2.6" fill="#7c4a1e" />
+        <circle cx="26" cy="32" r="3" fill="#7c4a1e" />
+        <circle cx="15" cy="32" r="1.8" fill="#7c4a1e" />
+        <circle cx="34" cy="28" r="1.8" fill="#7c4a1e" />
+        <circle cx="24" cy="18" r="1.5" fill="#7c4a1e" />
+      </svg>
+      <div class="min-w-0">
+        <p id="cookie-title" class="font-display text-xl leading-tight">Ein Keks zur Pizza?</p>
+        <p class="mt-1.5 text-sm leading-relaxed text-ink-soft">
+          Wir verwenden nur technisch notwendige Speicher, damit die Website funktioniert. Mit Ihrer Zustimmung laden wir
+          zusätzlich externe Inhalte wie Google Maps. Ihre Auswahl können Sie jederzeit in den{' '}
+          <a data-privacy-link href="/ledi/datenschutz#cookies" class="font-semibold text-tomato underline-offset-2 hover:underline">Cookie-Einstellungen</a>{' '}
+          ändern.
+        </p>
+      </div>
+    </div>
+
+    <div id="cookie-details" class="mt-4 space-y-2" hidden>
+      <label class="cookie-option">
+        <span>
+          <span class="block text-sm font-semibold">Notwendig</span>
+          <span class="block text-xs text-ink-soft">Merkt sich z. B. Ihren Standort und diese Auswahl. Immer aktiv.</span>
+        </span>
+        <input type="checkbox" checked disabled class="cookie-switch" />
+      </label>
+      <label class="cookie-option">
+        <span>
+          <span class="block text-sm font-semibold">Externe Medien</span>
+          <span class="block text-xs text-ink-soft">Google Maps im Fußbereich. Dabei werden Daten an Google übertragen.</span>
+        </span>
+        <input type="checkbox" id="consent-media" class="cookie-switch" />
+      </label>
+    </div>
+
+    <div class="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:items-center">
+      <button type="button" id="cookie-toggle" class="text-sm font-semibold text-ink-soft underline-offset-4 hover:text-ink hover:underline sm:mr-auto">
+        Einstellungen
+      </button>
+      <button type="button" id="cookie-save" class="btn-outline !py-2.5" hidden>Auswahl speichern</button>
+      <button type="button" id="cookie-necessary" class="btn-outline !py-2.5">Nur notwendige</button>
+      <button type="button" id="cookie-all" class="btn-primary !py-2.5">Alle akzeptieren</button>
+    </div>
+  </div>
+</div>
+
+<style>
+  #cookie-banner {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 90;
+    display: flex;
+    justify-content: center;
+    padding: 12px;
+    padding-bottom: max(12px, env(safe-area-inset-bottom));
+    pointer-events: none;
+  }
+  #cookie-banner[hidden] {
+    display: none;
+  }
+  .cookie-card {
+    pointer-events: auto;
+    width: 100%;
+    max-width: 34rem;
+    max-height: calc(100svh - 24px);
+    overflow-y: auto;
+    border-radius: 1.75rem;
+    background: var(--color-cream);
+    padding: 1.25rem;
+    box-shadow:
+      0 0 0 1px rgb(28 25 23 / 0.06),
+      0 24px 60px -12px rgb(28 25 23 / 0.45);
+    animation: cookie-in 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  #cookie-banner.is-leaving .cookie-card {
+    animation: cookie-out 0.4s ease forwards;
+  }
+  @media (min-width: 640px) {
+    #cookie-banner {
+      justify-content: flex-start;
+      padding: 24px;
+    }
+    .cookie-card {
+      padding: 1.5rem;
+    }
+  }
+  .cookie-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    border-radius: 1rem;
+    background: white;
+    padding: 0.75rem 1rem;
+    box-shadow: 0 0 0 1px rgb(28 25 23 / 0.06);
+    cursor: pointer;
+  }
+  .cookie-switch {
+    appearance: none;
+    flex-shrink: 0;
+    position: relative;
+    width: 2.75rem;
+    height: 1.6rem;
+    border-radius: 999px;
+    background: rgb(28 25 23 / 0.18);
+    transition: background-color 0.25s ease;
+    cursor: pointer;
+  }
+  .cookie-switch::after {
+    content: '';
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: calc(1.6rem - 6px);
+    aspect-ratio: 1;
+    border-radius: 999px;
+    background: white;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+    transition: transform 0.25s cubic-bezier(0.34, 1.4, 0.64, 1);
+  }
+  .cookie-switch:checked {
+    background: var(--color-basil);
+  }
+  .cookie-switch:checked::after {
+    transform: translateX(1.15rem);
+  }
+  .cookie-switch:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+  .cookie-switch:focus-visible {
+    outline: 2px solid var(--color-tomato);
+    outline-offset: 2px;
+  }
+  @keyframes cookie-in {
+    from {
+      opacity: 0;
+      transform: translateY(40px) scale(0.96);
+    }
+  }
+  @keyframes cookie-out {
+    to {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+  }
+</style>
+
+<script>
+  type Consent = { media: boolean; date: string };
+  const KEY = 'ledi-consent';
+
+  const banner = document.getElementById('cookie-banner')!;
+  const details = document.getElementById('cookie-details')!;
+  const toggle = document.getElementById('cookie-toggle')!;
+  const save = document.getElementById('cookie-save')!;
+  const media = document.getElementById('consent-media') as HTMLInputElement;
+
+  const read = (): Consent | null => {
+    try {
+      return JSON.parse(localStorage.getItem(KEY) || 'null');
+    } catch {
+      return null;
+    }
+  };
+
+  // Swap map placeholders ([data-map-src]) for the real Google Maps iframe.
+  const apply = (consent: Consent | null) => {
+    if (!consent?.media) return;
+    document.querySelectorAll<HTMLElement>('[data-map-src]').forEach((box) => {
+      const frame = document.createElement('iframe');
+      frame.src = box.dataset.mapSrc!;
+      frame.title = box.dataset.mapTitle || 'Karte';
+      frame.loading = 'lazy';
+      frame.referrerPolicy = 'no-referrer-when-downgrade';
+      frame.className = box.dataset.mapClass || '';
+      box.replaceWith(frame);
+    });
+  };
+
+  const showDetails = (open: boolean) => {
+    details.hidden = !open;
+    save.hidden = !open;
+    toggle.textContent = open ? 'Weniger anzeigen' : 'Einstellungen';
+  };
+
+  const open = (withDetails = false) => {
+    media.checked = read()?.media ?? false;
+    showDetails(withDetails);
+    banner.classList.remove('is-leaving');
+    banner.hidden = false;
+  };
+
+  const store = (mediaAllowed: boolean) => {
+    const consent = { media: mediaAllowed, date: new Date().toISOString() };
+    try {
+      localStorage.setItem(KEY, JSON.stringify(consent));
+    } catch {}
+    apply(consent);
+    banner.classList.add('is-leaving');
+    setTimeout(() => (banner.hidden = true), 400);
+  };
+
+  document.getElementById('cookie-all')!.addEventListener('click', () => store(true));
+  document.getElementById('cookie-necessary')!.addEventListener('click', () => store(false));
+  save.addEventListener('click', () => store(media.checked));
+  toggle.addEventListener('click', () => showDetails(details.hidden));
+
+  // "Karte laden" on a map placeholder counts as consent for external media.
+  document.querySelectorAll('[data-map-load]').forEach((btn) => btn.addEventListener('click', () => store(true)));
+  document.querySelectorAll('[data-cookie-settings]').forEach((btn) =>
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      open(true);
+    }),
+  );
+
+  // Point the privacy link at the current location's Datenschutz page.
+  const loc = location.pathname.split('/')[1];
+  const link = banner.querySelector<HTMLAnchorElement>('[data-privacy-link]')!;
+  link.href = `/${loc === 'due' ? 'due' : 'ledi'}/datenschutz#cookies`;
+
+  const consent = read();
+  apply(consent);
+  // First visit: ask after the start-page intro has finished.
+  if (!consent) setTimeout(() => open(), document.getElementById('intro') ? 3600 : 800);
+</script>

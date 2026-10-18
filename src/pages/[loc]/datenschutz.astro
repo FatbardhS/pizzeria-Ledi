@@ -13,5 +13,23 @@ const { location: site } = Astro.props;
     <p class="mt-6 rounded-2xl bg-cream-dark p-5 text-ink-soft">
       Der Text für {site.name} ({site.address.street}) wird noch ergänzt.
     </p>
+
+    <h2 id="cookies" class="font-display mt-12 text-2xl md:text-3xl">Cookies &amp; externe Inhalte</h2>
+    <div class="mt-4 space-y-4 leading-relaxed text-ink-soft">
+      <p>
+        <strong class="text-ink">Notwendig:</strong> Im Speicher Ihres Browsers (localStorage) merken wir uns den zuletzt
+        gewählten Standort und Ihre Cookie-Auswahl. Diese Daten verlassen Ihr Gerät nicht.
+      </p>
+      <p>
+        <strong class="text-ink">Schriftarten:</strong> Alle Schriften werden direkt von unserem Server geladen. Es findet
+        keine Verbindung zu Google Fonts statt.
+      </p>
+      <p>
+        <strong class="text-ink">Externe Medien (Google Maps):</strong> Die Karte wird erst nach Ihrer Zustimmung geladen.
+        Dabei werden Daten wie Ihre IP-Adresse an Google übertragen. Anbieter: Google Ireland Limited, Gordon House, Barrow
+        Street, Dublin 4, Irland.
+      </p>
+      <button type="button" data-cookie-settings class="btn-outline mt-2">Cookie-Einstellungen ändern</button>
+    </div>
   </section>
 </Base>

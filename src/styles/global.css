@@ -1,8 +1,8 @@
 @import 'tailwindcss';
 
 @theme {
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
-  --font-display: 'Fraunces', ui-serif, Georgia, serif;
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fraunces Variable', ui-serif, Georgia, serif;
   --font-script: 'Caveat', cursive;
 
   --color-cream: #faf6ef;
@@ -323,4 +323,16 @@ html[data-header-hidden] .sticky-under-header {
   html {
     scroll-behavior: auto;
   }
+}
+
+/* Stylised street-map backdrop shown until Google Maps is allowed. */
+.map-placeholder {
+  background-color: rgb(255 255 255 / 0.05);
+  background-image:
+    radial-gradient(circle at 50% 42%, rgb(200 52 31 / 0.25), transparent 45%),
+    linear-gradient(28deg, transparent 47%, rgb(250 246 239 / 0.1) 47% 53%, transparent 53%),
+    linear-gradient(-62deg, transparent 46%, rgb(250 246 239 / 0.08) 46% 50%, transparent 50%),
+    linear-gradient(rgb(250 246 239 / 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgb(250 246 239 / 0.05) 1px, transparent 1px);
+  background-size: auto, auto, auto, 28px 28px, 28px 28px;
 }

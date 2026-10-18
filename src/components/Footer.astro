@@ -55,21 +55,35 @@ const { location: site } = Astro.props;
     </div>
 
     <div class="reveal overflow-hidden rounded-2xl">
-      <iframe
-        title={`Karte: ${site.name}`}
-        src={site.mapEmbed}
-        class="h-64 w-full grayscale-[60%] md:h-full md:min-h-72"
-        loading="lazy"
-        referrerpolicy="no-referrer-when-downgrade"></iframe>
+      <!-- Google Maps loads only after consent (see CookieBanner). -->
+      <div
+        data-map-src={site.mapEmbed}
+        data-map-title={`Karte: ${site.name}`}
+        data-map-class="h-64 w-full grayscale-[60%] md:h-full md:min-h-72"
+        class="map-placeholder relative flex h-64 w-full flex-col items-center justify-center gap-3 p-6 text-center md:h-full md:min-h-72"
+      >
+        <span class="grid size-12 place-items-center rounded-full bg-tomato text-white shadow-lg shadow-tomato/30">
+          <Icon name="pin" class="size-6" />
+        </span>
+        <p class="font-semibold text-white">{site.address.street}</p>
+        <p class="max-w-xs text-xs text-cream/60">
+          Beim Laden der Karte werden Daten an Google übertragen.
+        </p>
+        <div class="flex flex-wrap justify-center gap-2">
+          <button type="button" data-map-load class="btn-primary !px-5 !py-2.5">Karte laden</button>
+          <a href={site.mapsUrl} target="_blank" rel="noopener" class="btn-ghost !px-5 !py-2.5">In Google Maps öffnen</a>
+        </div>
+      </div>
     </div>
   </div>
 
   <div class="border-t border-cream/10">
     <div class="container-page flex flex-col items-center justify-between gap-4 py-6 text-sm text-cream/60 sm:flex-row">
       <p>© {new Date().getFullYear()} {site.name} · <a href="/?standort" class="underline-offset-4 hover:text-white hover:underline">Standort wechseln</a></p>
-      <div class="flex items-center gap-5">
+      <div class="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
         <a href={`/${site.id}/impressum`} class="hover:text-white">Impressum</a>
         <a href={`/${site.id}/datenschutz`} class="hover:text-white">Datenschutz</a>
+        <button type="button" data-cookie-settings class="hover:text-white">Cookie-Einstellungen</button>
         <a href={brand.social.instagram} target="_blank" rel="noopener" aria-label="Instagram" class="hover:text-white">
           <Icon name="instagram" />
         </a>

@@ -14,7 +14,7 @@ npm run build    # statische Seite in dist/
 
 Zwei Standorte unter einer Domain:
 
-- `/` – Standortwahl (wird im Browser gemerkt; `/?standort` zeigt sie erneut)
+- `/` – Intro und Standortwahl (bei jedem Besuch)
 - `/ledi/…` – Pizzeria Ledi, Weitlingstraße 28
 - `/due/…` – Pizzeria Ledi Due, Lückstraße 34
 
@@ -26,6 +26,8 @@ Die Seiten liegen einmal in `src/pages/[loc]/` und werden für beide Standorte e
 - **Bilder, Bewertungen, Social Media:** `src/data/site.ts`
 - **Speisekarte (für beide gleich):** `src/data/menu.ts`
 - **Impressum / Datenschutz:** `src/pages/[loc]/impressum.astro`, `src/pages/[loc]/datenschutz.astro` (Text noch einfügen)
+
+Schriften liegen lokal (Fontsource), Google Maps lädt erst nach Zustimmung im Cookie-Banner.
 
 Bilder werden aktuell noch von der alten Website (`pizzeria-ledi.de/wp-content/uploads`) geladen.
 
