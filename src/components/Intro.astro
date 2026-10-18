@@ -1,0 +1,283 @@
+---
+// Splash shown before the location chooser: the Ledi logo while a pizza is assembled slice by slice.
+// Plays on every visit to the start page; tap anywhere to skip.
+
+const SLICES = 8;
+const C = 100;
+const point = (deg: number, r: number) => {
+  const rad = (deg * Math.PI) / 180;
+  return `${(C + r * Math.cos(rad)).toFixed(2)},${(C + r * Math.sin(rad)).toFixed(2)}`;
+};
+
+// Wedge outlines (slightly oversized so neighbours meet without hairline gaps).
+const slices = Array.from({ length: SLICES }, (_, i) => {
+  const a0 = (360 / SLICES) * i - 90;
+  const a1 = a0 + 360 / SLICES;
+  const mid = ((a0 + a1) / 2) * (Math.PI / 180);
+  return {
+    path: `M${C},${C} L${point(a0 - 0.4, 98)} A98 98 0 0 1 ${point(a1 + 0.4, 98)} Z`,
+    cut: `M${C},${C} L${point(a0, 97)}`,
+    // Each slice slides in from outside along its own centre line.
+    dx: (Math.cos(mid) * 60).toFixed(1),
+    dy: (Math.sin(mid) * 60).toFixed(1),
+  };
+});
+
+// Wavy melted-cheese edge.
+const cheese =
+  Array.from({ length: 72 }, (_, i) => {
+    const deg = i * 5;
+    const r = 74 + Math.sin(i * 1.7) * 3 + Math.sin(i * 0.6) * 2;
+    return `${i ? 'L' : 'M'}${point(deg, r)}`;
+  }).join(' ') + ' Z';
+
+const pepperoni = [
+  [100, 52], [140, 74], [62, 80], [118, 100], [80, 120], [140, 128], [104, 148], [60, 140], [88, 82], [146, 100],
+];
+const olives = [
+  [122, 62], [72, 104], [128, 150], [52, 112], [110, 124], [94, 64],
+];
+const basil = [
+  [80, 62, -30], [150, 112, 40], [96, 112, 10], [70, 150, -60], [128, 86, 70],
+];
+---
+
+<div id="intro" aria-hidden="true">
+  <div class="intro-stage">
+    <svg class="intro-pizza" viewBox="0 0 200 200" role="presentation">
+      <defs>
+        <radialGradient id="crust" cx="50%" cy="50%" r="50%">
+          <stop offset="78%" stop-color="#e7b56a" />
+          <stop offset="92%" stop-color="#cf8f45" />
+          <stop offset="100%" stop-color="#a86a2c" />
+        </radialGradient>
+        <radialGradient id="sauce" cx="50%" cy="50%" r="50%">
+          <stop offset="0%" stop-color="#d8442b" />
+          <stop offset="100%" stop-color="#b52d17" />
+        </radialGradient>
+        <g id="pizza">
+          <circle cx={C} cy={C} r="96" fill="url(#crust)" />
+          <circle cx="40" cy="70" r="2.2" fill="#9a5b22" opacity=".5" />
+          <circle cx="160" cy="150" r="2.6" fill="#9a5b22" opacity=".5" />
+          <circle cx="150" cy="38" r="1.8" fill="#9a5b22" opacity=".5" />
+          <circle cx="30" cy="128" r="2" fill="#9a5b22" opacity=".5" />
+          <circle cx={C} cy={C} r="82" fill="url(#sauce)" />
+          <path d={cheese} fill="#f6d77c" />
+          <path d={cheese} fill="#fbe6a2" transform="translate(100 100) scale(.82) translate(-100 -100)" opacity=".7" />
+          {
+            pepperoni.map(([x, y]) => (
+              <g>
+                <circle cx={x} cy={y} r="9.5" fill="#a8261a" />
+                <circle cx={x - 2} cy={y - 2} r="6" fill="#c8341f" opacity=".7" />
+                <circle cx={x + 3} cy={y + 2} r="1.2" fill="#7c1b12" />
+                <circle cx={x - 3} cy={y + 3} r="1" fill="#7c1b12" />
+              </g>
+            ))
+          }
+          {
+            olives.map(([x, y]) => (
+              <circle cx={x} cy={y} r="3.6" fill="none" stroke="#2a2522" stroke-width="2.4" />
+            ))
+          }
+          {
+            basil.map(([x, y, rot]) => (
+              <g transform={`rotate(${rot} ${x} ${y})`}>
+                <ellipse cx={x} cy={y} rx="8" ry="4.2" fill="#3f6b3a" />
+                <path d={`M${x - 7},${y} L${x + 7},${y}`} stroke="#5c8f54" stroke-width=".8" />
+              </g>
+            ))
+          }
+        </g>
+        {slices.map((s, i) => <clipPath id={`slice-${i}`}><path d={s.path} /></clipPath>)}
+      </defs>
+
+      <ellipse class="intro-shadow" cx={C} cy="190" rx="78" ry="7" fill="#1c1917" opacity=".12" />
+      {
+        slices.map((s, i) => (
+          <g class="intro-slice" style={`--i:${i};--dx:${s.dx}px;--dy:${s.dy}px`}>
+            <use href="#pizza" clip-path={`url(#slice-${i})`} />
+            <path d={s.cut} stroke="#a86a2c" stroke-width=".8" opacity=".35" />
+          </g>
+        ))
+      }
+    </svg>
+
+    <div class="intro-steam">
+      <span></span><span></span><span></span>
+    </div>
+
+    <p class="intro-logo font-script text-tomato">Ledi</p>
+    <p class="intro-tag text-ink-soft">Pizzeria · Trattoria</p>
+  </div>
+</div>
+
+<style>
+  #intro {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    display: grid;
+    place-items: center;
+    background: var(--color-cream);
+    animation: intro-out 0.9s cubic-bezier(0.77, 0, 0.18, 1) var(--intro-end) forwards;
+    --intro-end: 2.9s;
+    cursor: pointer;
+  }
+  .intro-stage {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+  }
+
+  .intro-pizza {
+    width: min(56vw, 240px);
+    overflow: visible;
+    animation: intro-settle 0.7s cubic-bezier(0.34, 1.56, 0.64, 1) 1.75s both;
+  }
+  .intro-slice {
+    transform-box: view-box;
+    transform-origin: 100px 100px;
+    opacity: 0;
+    animation: slice-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) calc(0.35s + var(--i) * 0.13s) forwards;
+  }
+  .intro-shadow {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: shadow-in 1.4s ease 0.35s both;
+  }
+
+  .intro-steam {
+    position: absolute;
+    top: -8px;
+    left: 50%;
+    display: flex;
+    gap: 14px;
+    transform: translateX(-50%);
+  }
+  .intro-steam span {
+    width: 6px;
+    height: 34px;
+    border-radius: 999px;
+    background: linear-gradient(to top, rgb(87 83 78 / 0.25), transparent);
+    filter: blur(2px);
+    opacity: 0;
+    animation: steam 1.6s ease-out infinite;
+    animation-delay: calc(1.9s + var(--s, 0) * 0.25s);
+  }
+  .intro-steam span:nth-child(2) {
+    --s: 1;
+    height: 44px;
+  }
+  .intro-steam span:nth-child(3) {
+    --s: 2;
+  }
+
+  .intro-logo {
+    margin-top: 1.25rem;
+    font-size: clamp(4.5rem, 16vw, 6.5rem);
+    line-height: 0.9;
+    clip-path: inset(0 100% 0 0);
+    animation: write 1.1s cubic-bezier(0.65, 0, 0.35, 1) 0.6s forwards;
+  }
+  .intro-tag {
+    margin-top: 0.6rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    animation: tag-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 1.3s both;
+  }
+
+  @keyframes slice-in {
+    from {
+      opacity: 0;
+      transform: translate(var(--dx), var(--dy)) rotate(-25deg) scale(0.6);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  @keyframes intro-settle {
+    0% {
+      transform: none;
+    }
+    40% {
+      transform: scale(1.06) rotate(6deg);
+    }
+    100% {
+      transform: none;
+    }
+  }
+  @keyframes shadow-in {
+    from {
+      opacity: 0;
+      transform: scaleX(0.3);
+    }
+  }
+  @keyframes steam {
+    0% {
+      opacity: 0;
+      transform: translateY(10px) scaleY(0.6);
+    }
+    40% {
+      opacity: 1;
+    }
+    100% {
+      opacity: 0;
+      transform: translateY(-26px) scaleY(1.1);
+    }
+  }
+  @keyframes write {
+    to {
+      clip-path: inset(0 -10% 0 0);
+    }
+  }
+  @keyframes tag-in {
+    from {
+      opacity: 0;
+      letter-spacing: 0.6em;
+    }
+  }
+  @keyframes intro-out {
+    to {
+      clip-path: circle(0% at 50% 45%);
+      visibility: hidden;
+    }
+  }
+  #intro {
+    clip-path: circle(150% at 50% 45%);
+  }
+  #intro.is-skipped {
+    animation: intro-out 0.6s cubic-bezier(0.77, 0, 0.18, 1) forwards;
+  }
+
+  /* While the intro plays, hold back the chooser's own entrance until it is revealed. */
+  :global(.chooser-in) {
+    animation-delay: 3.3s !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #intro {
+      display: none;
+    }
+    :global(.chooser-in) {
+      animation-delay: 0s !important;
+    }
+  }
+</style>
+
+<script>
+  const intro = document.getElementById('intro');
+  if (intro && getComputedStyle(intro).display !== 'none') {
+    const chooser = document.querySelector<HTMLElement>('.chooser-in');
+    intro.addEventListener('click', () => {
+      intro.classList.add('is-skipped');
+      chooser?.style.setProperty('animation-delay', '0.2s', 'important');
+    });
+    intro.addEventListener('animationend', (e) => {
+      if (e.target === intro && e.animationName.includes('intro-out')) intro.remove();
+    });
+  }
+</script>

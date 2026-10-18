@@ -1,0 +1,82 @@
+---
+import Icon from './Icon.astro';
+import { brand, type Location } from '../data/site';
+
+interface Props {
+  location: Location;
+}
+
+const { location: site } = Astro.props;
+---
+
+<footer id="kontakt" class="bg-ink pb-24 text-cream md:pb-0">
+  <div data-stagger="140" class="container-page grid gap-12 py-16 md:grid-cols-3 md:py-20">
+    <div class="reveal">
+      <p class="eyebrow">Besuchen Sie uns</p>
+      <h2 class="font-display mt-1 text-3xl">Kontakt</h2>
+      <ul class="mt-6 space-y-4 text-cream/80">
+        <li>
+          <a href={site.mapsUrl} target="_blank" rel="noopener" class="flex gap-3 hover:text-white">
+            <Icon name="pin" class="mt-0.5 size-5 shrink-0 text-tomato" />
+            <span>{site.address.street}<br />{site.address.city}</span>
+          </a>
+        </li>
+        <li>
+          <a href={site.phoneHref} class="flex gap-3 hover:text-white">
+            <Icon name="phone" class="size-5 shrink-0 text-tomato" />
+            {site.phone}
+          </a>
+        </li>
+        <li>
+          <a href={`mailto:${site.email}`} class="flex gap-3 hover:text-white">
+            <Icon name="mail" class="size-5 shrink-0 text-tomato" />
+            {site.email}
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="reveal">
+      <p class="eyebrow">Wann wir backen</p>
+      <h2 class="font-display mt-1 text-3xl">Öffnungszeiten</h2>
+      <dl class="mt-6 divide-y divide-cream/10 rounded-2xl bg-white/5 px-5">
+        {
+          site.hours.map((h) => (
+            <div class="flex items-center justify-between gap-4 py-4">
+              <dt class="text-cream/80">{h.days}</dt>
+              <dd class:list={['font-semibold', h.closed ? 'text-cream/50' : 'text-gold']}>{h.time}</dd>
+            </div>
+          ))
+        }
+      </dl>
+      <a href={`/${site.id}/reservierung`} class="btn-primary mt-6 w-full sm:w-auto">
+        <Icon name="calendar" class="size-4" /> Tisch reservieren
+      </a>
+    </div>
+
+    <div class="reveal overflow-hidden rounded-2xl">
+      <iframe
+        title={`Karte: ${site.name}`}
+        src={site.mapEmbed}
+        class="h-64 w-full grayscale-[60%] md:h-full md:min-h-72"
+        loading="lazy"
+        referrerpolicy="no-referrer-when-downgrade"></iframe>
+    </div>
+  </div>
+
+  <div class="border-t border-cream/10">
+    <div class="container-page flex flex-col items-center justify-between gap-4 py-6 text-sm text-cream/60 sm:flex-row">
+      <p>© {new Date().getFullYear()} {site.name} · <a href="/?standort" class="underline-offset-4 hover:text-white hover:underline">Standort wechseln</a></p>
+      <div class="flex items-center gap-5">
+        <a href={`/${site.id}/impressum`} class="hover:text-white">Impressum</a>
+        <a href={`/${site.id}/datenschutz`} class="hover:text-white">Datenschutz</a>
+        <a href={brand.social.instagram} target="_blank" rel="noopener" aria-label="Instagram" class="hover:text-white">
+          <Icon name="instagram" />
+        </a>
+        <a href={brand.social.facebook} target="_blank" rel="noopener" aria-label="Facebook" class="hover:text-white">
+          <Icon name="facebook" />
+        </a>
+      </div>
+    </div>
+  </div>
+</footer>

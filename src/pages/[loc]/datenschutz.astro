@@ -1,0 +1,17 @@
+---
+import Base from '../../layouts/Base.astro';
+import { locationPaths } from '../../data/site';
+
+export const getStaticPaths = locationPaths;
+const { location: site } = Astro.props;
+---
+
+<Base location={site} title="Datenschutzerklärung">
+  <section class="container-page max-w-3xl py-16 md:py-24">
+    <h1 class="font-display text-4xl md:text-5xl">Datenschutzerklärung</h1>
+    <!-- TODO: Den vollständigen Rechtstext von der bisherigen Website hier einfügen. -->
+    <p class="mt-6 rounded-2xl bg-cream-dark p-5 text-ink-soft">
+      Der Text für {site.name} ({site.address.street}) wird noch ergänzt.
+    </p>
+  </section>
+</Base>

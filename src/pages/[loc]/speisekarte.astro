@@ -1,0 +1,172 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { menu, allergenLegend } from '../../data/menu';
+import { brand, locationPaths } from '../../data/site';
+
+export const getStaticPaths = locationPaths;
+const { location: site } = Astro.props;
+
+const groups = [
+  { id: 'speisen', label: 'Speisen' },
+  { id: 'getraenke', label: 'Getränke' },
+] as const;
+---
+
+<Base location={site} title="Speisekarte" description={`Die Speisekarte der ${site.name}: Pizza aus dem Steinofen, hausgemachte Pasta, Antipasti, Fisch & Fleisch, Desserts und Getränke.`}>
+  <section class="container-page pt-10 pb-6 md:pt-16">
+    <p class="eyebrow hero-in" style="--delay:100ms">Italian Style</p>
+    <h1 class="font-display hero-in mt-1 text-5xl md:text-6xl" style="--delay:220ms">Speisekarte</h1>
+    <p class="hero-in mt-4 max-w-xl text-ink-soft" style="--delay:340ms">
+      Alle Pizzen kommen aus dem Steinofen – nach traditioneller Machart, ohne Blech gebacken.
+    </p>
+    <div class="hero-in mt-6 flex flex-wrap gap-3" style="--delay:460ms">
+      <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-primary">
+        <Icon name="bag" class="size-4" /> Online bestellen
+      </a>
+      <a href={brand.weeklyMenuPdf} target="_blank" rel="noopener" class="btn-outline">
+        <Icon name="file" class="size-4" /> Wochenkarte
+      </a>
+    </div>
+  </section>
+
+  <!-- Sticky category navigation -->
+  <div class="sticky-under-header sticky z-30 border-y border-ink/10 bg-cream/95 backdrop-blur-md">
+    <div class="container-page py-3">
+      <label class="relative block">
+        <span class="sr-only">Gericht suchen</span>
+        <svg class="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-ink-soft" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m21 21-4.3-4.3"/></svg>
+        <input
+          id="menu-search"
+          type="search"
+          placeholder="Suchen, z. B. Gorgonzola, Scampi…"
+          class="w-full rounded-full border border-ink/10 bg-white py-2.5 pr-4 pl-10 text-base outline-none focus:border-tomato focus:ring-2 focus:ring-tomato/20 md:text-sm"
+        />
+      </label>
+      <nav id="chips" class="scrollbar-none -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Kategorien">
+        {
+          menu.map((cat) => (
+            <a
+              href={`#${cat.id}`}
+              data-chip={cat.id}
+              class="shrink-0 rounded-full border border-ink/10 bg-white px-4 py-2 text-sm font-medium whitespace-nowrap transition data-[active]:border-ink data-[active]:bg-ink data-[active]:text-cream"
+            >
+              {cat.title}
+            </a>
+          ))
+        }
+      </nav>
+    </div>
+  </div>
+
+  <div class="container-page py-10 md:py-14">
+    <p id="no-results" class="hidden py-16 text-center text-ink-soft">Leider nichts gefunden. Versuchen Sie einen anderen Begriff.</p>
+
+    {
+      groups.map((g) => (
+        <div data-group={g.id}>
+          <h2 class="font-script mt-6 mb-2 text-4xl text-tomato first:mt-0">{g.label}</h2>
+          {menu
+            .filter((c) => c.group === g.id)
+            .map((cat) => (
+              <section id={cat.id} data-category class="scroll-mt-44 md:scroll-mt-48 border-b border-ink/10 py-10 last:border-0">
+                <header class="reveal md:flex md:items-end md:justify-between md:gap-8">
+                  <div>
+                    <h3 class="font-display text-3xl md:text-4xl">{cat.title}</h3>
+                    <p class="mt-1 text-sm tracking-wider text-ink-soft uppercase">{cat.subtitle}</p>
+                  </div>
+                  {cat.note && <p class="mt-3 max-w-md rounded-2xl bg-cream-dark px-4 py-3 text-sm text-ink-soft md:mt-0">{cat.note}</p>}
+                </header>
+                <ul data-stagger="60" class="mt-6 grid gap-x-10 gap-y-1 md:grid-cols-2">
+                  {cat.items.map((item) => (
+                    <li
+                      data-item
+                      data-search={`${item.name} ${item.desc ?? ''}`.toLowerCase()}
+                      class="reveal flex gap-4 rounded-2xl px-3 py-4 hover:bg-white"
+                    >
+                      {item.nr && <span class="font-display w-7 shrink-0 pt-0.5 text-lg text-tomato/60">{item.nr}</span>}
+                      <div class="min-w-0 flex-1">
+                        <p class="flex flex-wrap items-center gap-x-2 gap-y-1 font-semibold">
+                          {item.name}
+                          {item.tags?.includes('vegetarisch') && (
+                            <span title="Vegetarisch" class="text-basil">
+                              <Icon name="leaf" class="size-4" />
+                            </span>
+                          )}
+                          {item.tags?.includes('scharf') && (
+                            <span title="Scharf" class="text-tomato">
+                              <Icon name="flame" class="size-4" />
+                            </span>
+                          )}
+                          {item.tags?.includes('Haus-Tipp') && (
+                            <span class="rounded-full bg-gold/15 px-2 py-0.5 text-[11px] font-semibold text-[#8a6418]">Haus-Tipp</span>
+                          )}
+                        </p>
+                        {item.desc && <p class="mt-1 text-sm text-ink-soft">{item.desc}</p>}
+                        {item.allergens && <p class="mt-1 text-xs text-ink-soft/60">Zusatzstoffe: {item.allergens}</p>}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+        </div>
+      ))
+    }
+
+    <div class="mt-8 flex flex-wrap gap-4 text-sm text-ink-soft">
+      <span class="flex items-center gap-1.5"><Icon name="leaf" class="size-4 text-basil" /> Vegetarisch</span>
+      <span class="flex items-center gap-1.5"><Icon name="flame" class="size-4 text-tomato" /> Scharf</span>
+      <span>* gekochter Vorderschinken, Formfleisch</span>
+    </div>
+
+    <details class="mt-6 rounded-2xl bg-white p-5 ring-1 ring-ink/5">
+      <summary class="flex cursor-pointer items-center justify-between font-semibold">
+        Zusatzstoffe & Allergene <Icon name="down" class="size-5" />
+      </summary>
+      <p class="mt-4 text-sm leading-relaxed text-ink-soft">{allergenLegend}</p>
+    </details>
+  </div>
+</Base>
+
+<script>
+  const chips = [...document.querySelectorAll<HTMLAnchorElement>('[data-chip]')];
+  const sections = [...document.querySelectorAll<HTMLElement>('[data-category]')];
+  const chipNav = document.getElementById('chips')!;
+
+  // Scroll-spy: highlight the chip for the section in view and keep it visible.
+  const setActive = (id: string) => {
+    chips.forEach((c) => {
+      const on = c.dataset.chip === id;
+      c.toggleAttribute('data-active', on);
+      if (on) chipNav.scrollTo({ left: c.offsetLeft - chipNav.clientWidth / 2 + c.clientWidth / 2, behavior: 'smooth' });
+    });
+  };
+  const spy = new IntersectionObserver(
+    (entries) => entries.forEach((e) => e.isIntersecting && setActive(e.target.id)),
+    { rootMargin: '-45% 0px -50% 0px' },
+  );
+  sections.forEach((s) => spy.observe(s));
+
+  // Live search across all dishes and drinks.
+  const input = document.getElementById('menu-search') as HTMLInputElement;
+  const empty = document.getElementById('no-results')!;
+  input.addEventListener('input', () => {
+    const q = input.value.trim().toLowerCase();
+    let total = 0;
+    sections.forEach((section) => {
+      let visible = 0;
+      section.querySelectorAll<HTMLElement>('[data-item]').forEach((item) => {
+        const match = !q || item.dataset.search!.includes(q);
+        item.hidden = !match;
+        if (match) visible++;
+      });
+      section.hidden = visible === 0;
+      total += visible;
+    });
+    document.querySelectorAll<HTMLElement>('[data-group]').forEach((g) => {
+      g.hidden = !g.querySelector('[data-category]:not([hidden])');
+    });
+    empty.classList.toggle('hidden', total > 0);
+  });
+</script>

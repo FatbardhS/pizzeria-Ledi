@@ -1,0 +1,190 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { images, locationPaths } from '../../data/site';
+
+export const getStaticPaths = locationPaths;
+const { location: site } = Astro.props;
+
+const field =
+  'mt-1.5 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-base outline-none transition focus:border-tomato focus:ring-2 focus:ring-tomato/20';
+---
+
+<Base location={site} title="Reservierung" description={`Reservieren Sie Ihren Tisch in der ${site.name} in Berlin-Lichtenberg – online oder telefonisch.`}>
+  <section class="relative isolate overflow-hidden bg-ink text-white">
+    <img src={images.gallery[2].src} alt="" class="ken-burns absolute inset-0 -z-10 size-full object-cover opacity-35" />
+    <div class="container-page py-16 md:py-24">
+      <p class="eyebrow hero-in !text-gold" style="--delay:100ms">Wir freuen uns auf Sie</p>
+      <h1 class="font-display hero-in mt-1 text-5xl md:text-6xl" style="--delay:220ms">Tisch reservieren</h1>
+      <p class="hero-in mt-4 max-w-lg text-white/80" style="--delay:340ms">
+        Schnell und bequem online anfragen – oder einfach anrufen. Teilen Sie uns gerne auch weitere Wünsche mit.
+      </p>
+    </div>
+  </section>
+
+  <section class="container-page grid gap-10 py-12 md:grid-cols-5 md:py-20">
+    <form
+      id="reservation"
+      class="reveal md:col-span-3"
+      data-schedule={JSON.stringify(site.schedule)}
+      data-email={site.email}
+      novalidate
+    >
+      <fieldset>
+        <legend class="font-display text-2xl">Personen</legend>
+        <div class="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-8">
+          {
+            [1, 2, 3, 4, 5, 6, 7, 8].map((n) => (
+              <label class="cursor-pointer">
+                <input type="radio" name="guests" value={n} class="peer sr-only" checked={n === 2} />
+                <span class="flex h-12 items-center justify-center rounded-xl border border-ink/10 bg-white font-semibold transition peer-checked:border-tomato peer-checked:bg-tomato peer-checked:text-white peer-focus-visible:ring-2 peer-focus-visible:ring-tomato/40">
+                  {n === 8 ? '8+' : n}
+                </span>
+              </label>
+            ))
+          }
+        </div>
+      </fieldset>
+
+      <div class="mt-8 grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm font-medium">
+          Datum
+          <input id="date" name="date" type="date" required class={field} />
+        </label>
+        <label class="block text-sm font-medium">
+          Uhrzeit
+          <select id="time" name="time" required class={field}></select>
+        </label>
+      </div>
+
+      <h2 class="font-display mt-10 text-2xl">Kontaktdaten</h2>
+      <div class="mt-4 grid gap-4 sm:grid-cols-2">
+        <label class="block text-sm font-medium sm:col-span-2">
+          Name
+          <input name="name" type="text" autocomplete="name" required class={field} />
+        </label>
+        <label class="block text-sm font-medium">
+          E-Mail
+          <input name="email" type="email" autocomplete="email" required class={field} />
+        </label>
+        <label class="block text-sm font-medium">
+          Telefon
+          <input name="phone" type="tel" autocomplete="tel" required class={field} />
+        </label>
+        <label class="block text-sm font-medium sm:col-span-2">
+          Nachricht <span class="font-normal text-ink-soft">(optional)</span>
+          <textarea name="message" rows="3" class={field} placeholder="z. B. Kinderstuhl, Platz im Innenhof…"></textarea>
+        </label>
+      </div>
+
+      <p id="form-error" class="mt-4 hidden rounded-xl bg-tomato/10 px-4 py-3 text-sm text-tomato-dark" role="alert"></p>
+
+      <button type="submit" class="btn-primary mt-6 w-full !py-4 text-base sm:w-auto">
+        Buchung anfragen <Icon name="arrow" class="size-4" />
+      </button>
+      <p class="mt-4 text-sm text-ink-soft">
+        Anfragen sind erst nach unserer Bestätigung gültig. Bitte geben Sie immer Ihre Telefonnummer an, damit wir Sie bei
+        kurzfristigen Anfragen zurückrufen können.
+      </p>
+    </form>
+
+    <aside data-stagger="120" class="space-y-4 md:col-span-2">
+      <a href={site.phoneHref} class="reveal-right flex items-center gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5 hover:shadow-lg">
+        <span class="flex size-12 items-center justify-center rounded-full bg-tomato/10 text-tomato">
+          <Icon name="phone" class="size-6" />
+        </span>
+        <span>
+          <span class="block text-sm text-ink-soft">Lieber telefonisch?</span>
+          <span class="font-display text-2xl">{site.phone}</span>
+        </span>
+      </a>
+      <div class="reveal-right rounded-3xl bg-ink p-6 text-cream">
+        <p class="flex items-center gap-2 font-semibold"><Icon name="clock" class="size-5 text-gold" /> Öffnungszeiten</p>
+        <dl class="mt-4 space-y-2 text-sm">
+          {
+            site.hours.map((h) => (
+              <div class="flex justify-between gap-4">
+                <dt class="text-cream/70">{h.days}</dt>
+                <dd class:list={[h.closed ? 'text-cream/50' : 'font-semibold text-gold']}>{h.time}</dd>
+              </div>
+            ))
+          }
+        </dl>
+      </div>
+      <a href={site.mapsUrl} target="_blank" rel="noopener" class="reveal-right flex items-center gap-4 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5 hover:shadow-lg">
+        <span class="flex size-12 items-center justify-center rounded-full bg-basil/10 text-basil">
+          <Icon name="pin" class="size-6" />
+        </span>
+        <span>
+          <span class="block font-semibold">{site.address.street}</span>
+          <span class="text-sm text-ink-soft">{site.address.city} · Route planen</span>
+        </span>
+      </a>
+    </aside>
+  </section>
+</Base>
+
+<script>
+
+  const form = document.getElementById('reservation') as HTMLFormElement;
+  // Location-specific data is rendered onto the form by the page.
+  const schedule: Record<number, { open: number; close: number } | null> = JSON.parse(form.dataset.schedule!);
+  const email = form.dataset.email!;
+  const dateInput = document.getElementById('date') as HTMLInputElement;
+  const timeSelect = document.getElementById('time') as HTMLSelectElement;
+  const error = document.getElementById('form-error')!;
+
+  // Earliest bookable day is today; default to the next open day.
+  const iso = (d: Date) => new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+  const today = new Date();
+  dateInput.min = iso(today);
+  const next = new Date(today);
+  while (!schedule[next.getDay()]) next.setDate(next.getDate() + 1);
+  dateInput.value = iso(next);
+
+  // Time slots every 30 min from opening until 30 min before closing, per weekday.
+  const fillTimes = () => {
+    const slot = schedule[new Date(`${dateInput.value}T12:00`).getDay()];
+    const previous = timeSelect.value || '19:00';
+    timeSelect.innerHTML = '';
+    if (!slot) {
+      timeSelect.add(new Option('Ruhetag', ''));
+      return;
+    }
+    for (let m = slot.open; m <= slot.close - 30; m += 30) {
+      const t = `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+      timeSelect.add(new Option(t, t, false, t === previous));
+    }
+  };
+  fillTimes();
+  dateInput.addEventListener('change', fillTimes);
+
+  // No backend yet: the request opens the guest's mail app with everything filled in.
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const date = new Date(`${data.get('date')}T12:00`);
+
+    let msg = '';
+    if (!form.checkValidity()) msg = 'Bitte füllen Sie alle Pflichtfelder korrekt aus.';
+    else if (!schedule[date.getDay()]) msg = 'An diesem Tag haben wir Ruhetag – bitte wählen Sie einen anderen Tag.';
+    error.textContent = msg;
+    error.classList.toggle('hidden', !msg);
+    if (msg) return;
+
+    const pretty = date.toLocaleDateString('de-DE', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' });
+    const body = [
+      `Personen: ${data.get('guests')}`,
+      `Datum: ${pretty}`,
+      `Uhrzeit: ${data.get('time')} Uhr`,
+      '',
+      `Name: ${data.get('name')}`,
+      `E-Mail: ${data.get('email')}`,
+      `Telefon: ${data.get('phone')}`,
+      '',
+      `Nachricht: ${data.get('message') || '–'}`,
+    ].join('\n');
+    const subject = `Reservierungsanfrage ${pretty}, ${data.get('time')} Uhr`;
+    window.location.href = `mailto:${email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  });
+</script>

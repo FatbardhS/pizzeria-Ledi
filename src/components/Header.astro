@@ -1,0 +1,181 @@
+---
+import Icon from './Icon.astro';
+import { navFor, locations, type Location } from '../data/site';
+
+interface Props {
+  location: Location;
+  /** Sit over a dark hero image: transparent → dark glass → cream once past the hero. */
+  overlay?: boolean;
+}
+
+const { location: site, overlay = false } = Astro.props;
+const nav = navFor(site.id);
+const other = site.id === 'ledi' ? locations.due : locations.ledi;
+const path = Astro.url.pathname.replace(/\/$/, '') || '/';
+---
+
+<header
+  id="site-header"
+  data-overlay={overlay ? 'true' : undefined}
+  data-state={overlay ? 'top' : 'solid'}
+  class="fixed inset-x-0 top-0 z-50"
+>
+  <div id="scroll-progress" class="absolute bottom-0 left-0 h-0.5 w-full origin-left scale-x-0 bg-tomato"></div>
+  <div class="container-page flex h-16 items-center justify-between md:h-20">
+    <a href={`/${site.id}`} class="flex shrink-0 items-baseline gap-2.5 whitespace-nowrap" aria-label={`${site.name} – Startseite`}>
+      <span class="logo-script font-script text-3xl leading-none text-tomato transition-colors duration-300 md:text-4xl">{site.shortName}</span>
+      <span class="text-[11px] font-semibold tracking-[0.25em] uppercase opacity-80 md:hidden xl:inline">Pizzeria</span>
+    </a>
+
+    <nav class="hidden items-center gap-4 whitespace-nowrap md:flex lg:gap-8" aria-label="Hauptnavigation">
+      {
+        nav.map((item) => (
+          <a
+            href={item.href}
+            class:list={[
+              'text-sm font-medium tracking-wide transition hover:text-tomato',
+              path === item.href && 'text-tomato',
+            ]}
+          >
+            {item.label}
+          </a>
+        ))
+      }
+      <a
+        href="/?standort"
+        class="group flex items-center gap-2 rounded-full border border-current/25 py-1.5 pr-1.5 pl-3 text-xs font-semibold tracking-wide transition hover:border-tomato"
+        title={`Zu ${other.name} wechseln`}
+      >
+        <Icon name="pin" class="size-3.5 text-tomato" />
+        <span class="hidden lg:inline">{site.address.street}</span>
+        <span class="flex items-center gap-1 rounded-full bg-current/10 px-2 py-0.5 transition group-hover:bg-tomato group-hover:text-white">
+          <Icon name="swap" class="size-3" /> Wechseln
+        </span>
+      </a>
+      <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-primary !px-3.5 !py-2.5 lg:!px-5" aria-label="Online bestellen">
+        <Icon name="bag" class="size-4" /> <span class="hidden lg:inline">Bestellen</span>
+      </a>
+    </nav>
+
+    <button
+      id="menu-open"
+      type="button"
+      class="-mr-2 rounded-full p-2 md:hidden"
+      aria-label="Menü öffnen"
+      aria-controls="mobile-menu"
+      aria-expanded="false"
+    >
+      <Icon name="menu" class="size-7" />
+    </button>
+  </div>
+</header>
+
+<!-- Mobile full-screen menu -->
+<div
+  id="mobile-menu"
+  class="pointer-events-none fixed inset-0 z-[60] flex flex-col bg-ink text-cream opacity-0 transition-opacity duration-300 md:hidden"
+  aria-hidden="true"
+>
+  <div class="container-page flex h-16 items-center justify-between">
+    <span class="font-script text-3xl text-tomato">{site.shortName}</span>
+    <button id="menu-close" type="button" class="-mr-2 rounded-full p-2" aria-label="Menü schließen">
+      <Icon name="x" class="size-7" />
+    </button>
+  </div>
+  <nav class="container-page flex flex-1 flex-col justify-center gap-2" aria-label="Mobile Navigation">
+    {
+      nav.map((item, i) => (
+        <a
+          href={item.href}
+          class="mobile-link font-display translate-y-4 py-2 text-4xl opacity-0 transition duration-500"
+          style={`transition-delay:${80 + i * 60}ms`}
+        >
+          {item.label}
+        </a>
+      ))
+    }
+  </nav>
+  <div class="container-page space-y-3 pb-10">
+    <a href="/?standort" class="mb-6 flex items-center justify-between rounded-2xl bg-white/5 px-4 py-3">
+      <span class="flex items-center gap-3">
+        <Icon name="pin" class="size-5 text-tomato" />
+        <span>
+          <span class="block text-xs tracking-wider text-cream/50 uppercase">Standort</span>
+          {site.address.street}
+        </span>
+      </span>
+      <span class="text-sm font-semibold text-gold">Wechseln</span>
+    </a>
+    <a href={site.phoneHref} class="flex items-center gap-3 text-cream/80">
+      <Icon name="phone" class="size-5 text-tomato" />
+      {site.phone}
+    </a>
+    <p class="flex items-center gap-3 text-cream/80">
+      <Icon name="clock" class="size-5 text-tomato" /> {site.hoursShort}
+    </p>
+  </div>
+</div>
+
+<script>
+  const header = document.getElementById('site-header')!;
+  const menu = document.getElementById('mobile-menu')!;
+  const openBtn = document.getElementById('menu-open')!;
+  const closeBtn = document.getElementById('menu-close')!;
+
+  const progress = document.getElementById('scroll-progress')!;
+  const hero = document.querySelector<HTMLElement>('[data-hero]');
+  let lastY = window.scrollY;
+  let ticking = false;
+
+  const update = () => {
+    const y = window.scrollY;
+
+    // Over a hero: transparent at the very top, dark glass while over the photo, cream after it.
+    if (header.dataset.overlay && hero) {
+      const heroEnd = hero.offsetTop + hero.offsetHeight - header.offsetHeight;
+      header.dataset.state = y < 24 ? 'top' : y < heroEnd ? 'glass' : 'solid';
+    }
+
+    // Hide while scrolling down, show again on the slightest scroll up.
+    const menuOpen = document.body.style.overflow === 'hidden';
+    if (!menuOpen && Math.abs(y - lastY) > 6) {
+      const hidden = y > lastY && y > 320;
+      header.toggleAttribute('data-hidden', hidden);
+      // Lets sticky bars below the header slide up into the freed space.
+      document.documentElement.toggleAttribute('data-header-hidden', hidden);
+      lastY = y;
+    }
+
+    const max = document.documentElement.scrollHeight - window.innerHeight;
+    progress.style.transform = `scaleX(${max > 0 ? y / max : 0})`;
+    ticking = false;
+  };
+  update();
+  window.addEventListener(
+    'scroll',
+    () => {
+      if (!ticking) {
+        ticking = true;
+        requestAnimationFrame(update);
+      }
+    },
+    { passive: true },
+  );
+
+  const setOpen = (open: boolean) => {
+    menu.classList.toggle('opacity-0', !open);
+    menu.classList.toggle('pointer-events-none', !open);
+    menu.setAttribute('aria-hidden', String(!open));
+    openBtn.setAttribute('aria-expanded', String(open));
+    document.body.style.overflow = open ? 'hidden' : '';
+    menu.querySelectorAll('.mobile-link').forEach((link) => {
+      link.classList.toggle('opacity-0', !open);
+      link.classList.toggle('translate-y-4', !open);
+    });
+  };
+
+  openBtn.addEventListener('click', () => setOpen(true));
+  closeBtn.addEventListener('click', () => setOpen(false));
+  menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setOpen(false)));
+  document.addEventListener('keydown', (e) => e.key === 'Escape' && setOpen(false));
+</script>

@@ -1,0 +1,174 @@
+---
+import '../styles/global.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+import MobileBar from '../components/MobileBar.astro';
+import { images, type Location } from '../data/site';
+
+interface Props {
+  /** Omit for the location chooser: renders without header, footer and action bar. */
+  location?: Location;
+  title?: string;
+  description?: string;
+  overlayHeader?: boolean;
+}
+
+const { location: site, title, overlayHeader = false } = Astro.props;
+const brandName = site?.name ?? 'Pizzeria Ledi';
+const description =
+  Astro.props.description ??
+  (site
+    ? `${site.name} in Berlin-Lichtenberg, ${site.address.street}: dünner Teig, Steinofen, frische Zutaten. Handgemachte Pizza mit Liebe. Jetzt reservieren oder online bestellen.`
+    : 'Pizzeria Ledi in Berlin-Lichtenberg – zwei Standorte: Weitlingstraße 28 und Lückstraße 34. Pizza aus dem Steinofen, mit Liebe gebacken.');
+
+const fullTitle = title ? `${title} | ${brandName}` : `${brandName} | Trattoria in Berlin-Lichtenberg`;
+
+// Google opening hours, grouped from the weekly schedule.
+const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const hhmm = (m: number) => `${String(Math.floor(m / 60)).padStart(2, '0')}:${String(m % 60).padStart(2, '0')}`;
+const openingHours = new Map<string, string[]>();
+Object.entries(site?.schedule ?? {}).forEach(([day, slot]) => {
+  if (!slot) return;
+  const key = `${hhmm(slot.open)}-${hhmm(slot.close)}`;
+  openingHours.set(key, [...(openingHours.get(key) ?? []), dayNames[Number(day)]]);
+});
+
+const jsonLd = site && {
+  '@context': 'https://schema.org',
+  '@type': 'Restaurant',
+  name: site.name,
+  servesCuisine: ['Italienisch', 'Pizza'],
+  telephone: '+49 30 63962115',
+  email: site.email,
+  url: `https://pizzeria-ledi.de/${site.id}`,
+  image: images.hero,
+  address: {
+    '@type': 'PostalAddress',
+    streetAddress: site.address.street,
+    postalCode: site.address.postalCode,
+    addressLocality: 'Berlin',
+    addressCountry: 'DE',
+  },
+  openingHoursSpecification: [...openingHours].map(([range, days]) => ({
+    '@type': 'OpeningHoursSpecification',
+    dayOfWeek: days,
+    opens: range.split('-')[0],
+    closes: range.split('-')[1],
+  })),
+  acceptsReservations: true,
+  hasMenu: `https://pizzeria-ledi.de/${site.id}/speisekarte`,
+};
+---
+
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#1c1917" />
+    <title>{fullTitle}</title>
+    <meta name="description" content={description} />
+    <meta property="og:title" content={fullTitle} />
+    <meta property="og:description" content={description} />
+    <meta property="og:image" content={images.hero} />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Caveat:wght@600&family=Fraunces:opsz,wght@9..144,400;9..144,600&family=Inter:wght@400;500;600&display=swap"
+    />
+    {jsonLd && <script type="application/ld+json" set:html={JSON.stringify(jsonLd)} />}
+    {
+      site && (
+        <script is:inline define:vars={{ id: site.id }}>
+          try { localStorage.setItem('ledi-location', id); } catch {}
+        </script>
+      )
+    }
+    <slot name="head" />
+  </head>
+  <body>
+    {site && <Header location={site} overlay={overlayHeader} />}
+    <main class:list={[site && !overlayHeader && 'pt-16 md:pt-20']}>
+      <slot />
+    </main>
+    {site && <Footer location={site} />}
+    {site && <MobileBar location={site} />}
+
+    <script>
+      const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+      // Children of [data-stagger] enter one after another.
+      document.querySelectorAll<HTMLElement>('[data-stagger]').forEach((parent) => {
+        const step = Number(parent.dataset.stagger) || 90;
+        [...parent.children].forEach((child, i) => {
+          (child as HTMLElement).style.setProperty('--delay', `${Math.min(i, 8) * step}ms`);
+        });
+      });
+
+      // Count up numbers like "15+" when they scroll into view.
+      const countUp = (el: HTMLElement) => {
+        const target = Number(el.dataset.count);
+        const start = performance.now();
+        const tick = (now: number) => {
+          const t = Math.min((now - start) / 1400, 1);
+          el.textContent = String(Math.round(target * (1 - Math.pow(1 - t, 3))));
+          if (t < 1) requestAnimationFrame(tick);
+        };
+        requestAnimationFrame(tick);
+      };
+
+      // A fully clipped .reveal-mask counts as zero-size for the observer, so its parent is watched instead.
+      const masks = new Map<Element, HTMLElement>();
+      document.querySelectorAll<HTMLElement>('.reveal-mask').forEach((el) => masks.set(el.parentElement!, el));
+
+      // Elements fade in when they scroll into view and fade out again when they leave, in both directions.
+      const counted = new WeakSet<Element>();
+      const io = new IntersectionObserver(
+        (entries) =>
+          entries.forEach((e) => {
+            const el = (masks.get(e.target) ?? e.target) as HTMLElement;
+            el.classList.toggle('is-visible', e.isIntersecting);
+            if (e.isIntersecting && el.dataset.count && !reduced && !counted.has(el)) {
+              counted.add(el);
+              countUp(el);
+            }
+          }),
+        { threshold: 0.12, rootMargin: '-6% 0px -8% 0px' },
+      );
+      document
+        .querySelectorAll('.reveal, .reveal-left, .reveal-right, .reveal-scale, [data-count]')
+        .forEach((el) => io.observe(el));
+      masks.forEach((_, parent) => io.observe(parent));
+
+      // Gentle parallax for background photos (transform only, so it stays smooth on phones).
+      const layers = [...document.querySelectorAll<HTMLElement>('[data-parallax]')];
+      if (layers.length && !reduced) {
+        let ticking = false;
+        const move = () => {
+          const vh = window.innerHeight;
+          layers.forEach((el) => {
+            const box = el.parentElement!.getBoundingClientRect();
+            if (box.bottom < 0 || box.top > vh) return;
+            const offset = (box.top + box.height / 2 - vh / 2) * Number(el.dataset.parallax);
+            el.style.transform = `translate3d(0, ${offset}px, 0)`;
+          });
+          ticking = false;
+        };
+        move();
+        window.addEventListener(
+          'scroll',
+          () => {
+            if (!ticking) {
+              ticking = true;
+              requestAnimationFrame(move);
+            }
+          },
+          { passive: true },
+        );
+      }
+    </script>
+  </body>
+</html>

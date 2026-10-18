@@ -1,0 +1,101 @@
+---
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { images, locationPaths } from '../../data/site';
+
+export const getStaticPaths = locationPaths;
+const { location: site } = Astro.props;
+
+const photos = [...images.gallery, { src: images.outside, alt: 'Außenbereich im Innenhof' }];
+---
+
+<Base location={site} title="Galerie" description={`Eindrücke aus der ${site.name}: unser Gastraum und Gerichte aus der Wochenkarte.`}>
+  <section class="container-page pt-10 pb-6 md:pt-16">
+    <p class="eyebrow hero-in" style="--delay:100ms">Eindrücke</p>
+    <h1 class="font-display hero-in mt-1 text-5xl md:text-6xl" style="--delay:220ms">Galerie</h1>
+  </section>
+
+  <section class="container-page pb-20">
+    <div data-stagger="80" class="columns-2 gap-3 md:columns-3 md:gap-4">
+      {
+        photos.map((p, i) => (
+          <button
+            type="button"
+            data-index={i}
+            class="group reveal-scale mb-3 block w-full overflow-hidden rounded-2xl break-inside-avoid md:mb-4"
+            aria-label={`Bild vergrößern: ${p.alt}`}
+          >
+            <img
+              src={p.src}
+              alt={p.alt}
+              loading="lazy"
+              class="w-full transition duration-700 group-hover:scale-105"
+            />
+          </button>
+        ))
+      }
+    </div>
+  </section>
+
+  <dialog id="lightbox" class="m-0 h-full max-h-none w-full max-w-none bg-ink/95 p-0 text-white backdrop:bg-transparent">
+    <div class="flex h-full flex-col">
+      <div class="flex items-center justify-between p-4">
+        <span id="lb-count" class="text-sm text-white/60"></span>
+        <button id="lb-close" type="button" class="rounded-full p-2 hover:bg-white/10" aria-label="Schließen">
+          <Icon name="x" class="size-7" />
+        </button>
+      </div>
+      <div id="lb-stage" class="relative flex flex-1 touch-pan-y items-center justify-center px-4">
+        <button id="lb-prev" type="button" class="absolute left-2 hidden rounded-full bg-white/10 p-3 md:block" aria-label="Vorheriges Bild">
+          <Icon name="arrow" class="size-5 rotate-180" />
+        </button>
+        <img id="lb-img" alt="" class="max-h-[75vh] max-w-full rounded-xl object-contain" />
+        <button id="lb-next" type="button" class="absolute right-2 hidden rounded-full bg-white/10 p-3 md:block" aria-label="Nächstes Bild">
+          <Icon name="arrow" class="size-5" />
+        </button>
+      </div>
+      <p id="lb-caption" class="p-6 text-center text-white/80"></p>
+    </div>
+  </dialog>
+</Base>
+
+<script>
+  const buttons = [...document.querySelectorAll<HTMLButtonElement>('[data-index]')];
+  const photos = buttons.map((b) => b.querySelector('img')!);
+  const dialog = document.getElementById('lightbox') as HTMLDialogElement;
+  const img = document.getElementById('lb-img') as HTMLImageElement;
+  const caption = document.getElementById('lb-caption')!;
+  const count = document.getElementById('lb-count')!;
+  let current = 0;
+
+  const show = (i: number) => {
+    current = (i + photos.length) % photos.length;
+    img.src = photos[current].src;
+    img.alt = photos[current].alt;
+    caption.textContent = photos[current].alt;
+    count.textContent = `${current + 1} / ${photos.length}`;
+  };
+
+  buttons.forEach((b) =>
+    b.addEventListener('click', () => {
+      show(Number(b.dataset.index));
+      dialog.showModal();
+    }),
+  );
+  document.getElementById('lb-close')!.addEventListener('click', () => dialog.close());
+  document.getElementById('lb-prev')!.addEventListener('click', () => show(current - 1));
+  document.getElementById('lb-next')!.addEventListener('click', () => show(current + 1));
+  dialog.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowLeft') show(current - 1);
+    if (e.key === 'ArrowRight') show(current + 1);
+  });
+
+  // Swipe left/right on phones.
+  let startX = 0;
+  const stage = document.getElementById('lb-stage')!;
+  stage.addEventListener('touchstart', (e) => (startX = e.touches[0].clientX), { passive: true });
+  stage.addEventListener('touchend', (e) => {
+    const dx = e.changedTouches[0].clientX - startX;
+    if (Math.abs(dx) > 50) show(current + (dx < 0 ? 1 : -1));
+  });
+</script>

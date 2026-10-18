@@ -1,0 +1,119 @@
+---
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import Intro from '../components/Intro.astro';
+import { images, locations } from '../data/site';
+
+const options = [
+  { location: locations.ledi, image: images.gallery[0].src },
+  { location: locations.due, image: images.hero },
+];
+---
+
+<Base>
+  <!-- Every visit to the start page plays the intro, then shows the chooser. -->
+  <Intro />
+  <section class="relative isolate flex min-h-[100svh] items-center justify-center overflow-hidden bg-ink px-4 py-10">
+    <img src={images.hero} alt="" class="ken-burns absolute inset-0 -z-20 size-full object-cover" fetchpriority="high" />
+    <div class="absolute inset-0 -z-10 bg-ink/75 backdrop-blur-sm"></div>
+
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="chooser-title"
+      class="chooser-in w-full max-w-3xl rounded-[2rem] bg-cream p-5 shadow-2xl shadow-black/50 sm:p-8 md:p-10"
+    >
+      <div class="text-center">
+        <p class="font-script text-5xl leading-none text-tomato md:text-6xl">Ledi</p>
+        <p class="mt-1 text-[11px] font-semibold tracking-[0.3em] text-ink-soft uppercase">Pizzeria · Trattoria</p>
+        <h1 id="chooser-title" class="font-display mt-5 text-3xl leading-tight md:text-4xl">Welche Ledi darf es sein?</h1>
+        <p class="mt-2 text-ink-soft">Zwei Pizzerien in Berlin-Lichtenberg – wählen Sie Ihren Standort.</p>
+      </div>
+
+      <div data-stagger="140" class="mt-8 grid gap-4 md:grid-cols-2">
+        {
+          options.map(({ location, image }) => (
+            <a
+              href={`/${location.id}`}
+              data-choose={location.id}
+              class="group reveal relative flex overflow-hidden rounded-3xl bg-white shadow-sm ring-1 ring-ink/5 transition hover:-translate-y-1 hover:shadow-xl hover:ring-tomato/40 focus-visible:ring-2 focus-visible:ring-tomato focus-visible:outline-none md:flex-col"
+            >
+              <div class="relative w-28 shrink-0 overflow-hidden sm:w-36 md:aspect-[16/10] md:w-full">
+                <img src={image} alt="" class="size-full object-cover transition duration-700 group-hover:scale-110" loading="eager" />
+                <span class="absolute top-2 left-2 rounded-full bg-tomato px-2.5 py-1 text-[11px] font-semibold tracking-wide text-white shadow md:top-3 md:left-3">
+                  {location.label}
+                </span>
+              </div>
+              <div class="flex min-w-0 flex-1 flex-col p-4 md:p-6">
+                <p class="font-display text-2xl leading-tight md:text-3xl">{location.shortName}</p>
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
+                  <Icon name="pin" class="size-4 shrink-0 text-tomato" />
+                  {location.address.street}
+                </p>
+                <p class="mt-1 flex items-center gap-1.5 text-sm text-ink-soft">
+                  <Icon name="clock" class="size-4 shrink-0 text-tomato" />
+                  <span data-status={JSON.stringify(location.schedule)}>{location.hoursShort}</span>
+                </p>
+                <span class="mt-auto flex items-center gap-1.5 pt-3 text-sm font-semibold text-tomato">
+                  Zur Pizzeria
+                  <Icon name="arrow" class="size-4 transition group-hover:translate-x-1" />
+                </span>
+              </div>
+            </a>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  @keyframes chooser-in {
+    from {
+      opacity: 0;
+      transform: translateY(30px) scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+  .chooser-in {
+    animation: chooser-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) 0.15s both;
+  }
+</style>
+
+<script>
+  // Remember the choice right away (the location page stores it too).
+  document.querySelectorAll<HTMLAnchorElement>('[data-choose]').forEach((a) =>
+    a.addEventListener('click', () => {
+      try {
+        localStorage.setItem('ledi-location', a.dataset.choose!);
+      } catch {}
+    }),
+  );
+
+  // Live "open now" line per location, in Berlin time.
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Europe/Berlin',
+    weekday: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hourCycle: 'h23',
+  }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)!.value;
+  const day = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday'));
+  const minutes = Number(get('hour')) * 60 + Number(get('minute'));
+  const fmt = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+
+  document.querySelectorAll<HTMLElement>('[data-status]').forEach((el) => {
+    const schedule: Record<number, { open: number; close: number } | null> = JSON.parse(el.dataset.status!);
+    const today = schedule[day];
+    if (!today) el.textContent = 'Heute Ruhetag';
+    else if (minutes < today.open) el.textContent = `Heute ${fmt(today.open)} – ${fmt(today.close)}`;
+    else if (minutes < today.close) {
+      el.textContent = `Jetzt geöffnet · bis ${fmt(today.close)}`;
+      el.classList.add('font-semibold', 'text-basil');
+    } else el.textContent = 'Heute geschlossen';
+  });
+</script>
