@@ -1,0 +1,602 @@
+---
+// Online order: guests fill a basket from the priced menu (prices and weekly dishes come from /admin),
+// enter their details and send the order to the restaurant's WhatsApp. Staff confirm it in the chat.
+import Base from '../../layouts/Base.astro';
+import Icon from '../../components/Icon.astro';
+import { menu, itemKey } from '../../data/menu';
+import { locationPaths } from '../../data/site';
+
+export const getStaticPaths = locationPaths;
+const { location: site } = Astro.props;
+
+const config = {
+  location: site.id,
+  name: site.name,
+  whatsapp: site.whatsapp,
+  phone: site.phone,
+  delivery: site.delivery,
+  schedule: site.schedule,
+};
+
+const field =
+  'mt-1.5 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-base outline-none transition focus:border-tomato focus:ring-2 focus:ring-tomato/20';
+---
+
+<Base location={site} title="Online bestellen" description={`Online bei ${site.name} bestellen – Pizza aus dem Steinofen zum Abholen oder Liefern. Bestellung per WhatsApp.`}>
+  <section class="container-page pt-10 pb-6 md:pt-16">
+    <p class="eyebrow hero-in" style="--delay:100ms">Abholen oder liefern lassen</p>
+    <h1 class="font-display hero-in mt-1 text-5xl md:text-6xl" style="--delay:220ms">Online bestellen</h1>
+    <p class="hero-in mt-4 max-w-xl text-ink-soft" style="--delay:340ms">
+      Stellen Sie Ihre Bestellung zusammen – sie wird per WhatsApp an die {site.name} gesendet. Wir melden uns kurz, um sie zu bestätigen.
+    </p>
+    <p id="closed-note" hidden class="hero-in mt-5 max-w-xl rounded-2xl bg-gold/15 px-4 py-3 text-sm text-[#7a5612]" style="--delay:400ms"></p>
+  </section>
+
+  <div id="order" class="container-page grid gap-8 pb-32 md:grid-cols-[1fr_380px] md:pb-20 lg:gap-12" data-config={JSON.stringify(config)}>
+    <!-- Menu -->
+    <div>
+      <div class="sticky-under-header sticky z-20 -mx-4 border-b border-ink/10 bg-cream/95 px-4 py-3 backdrop-blur-md sm:mx-0 sm:rounded-b-2xl sm:px-0">
+        <nav id="order-chips" class="scrollbar-none flex gap-2 overflow-x-auto" aria-label="Kategorien"></nav>
+      </div>
+
+      <p id="menu-loading" class="py-16 text-center text-ink-soft">Speisekarte wird geladen…</p>
+      <div id="menu-unavailable" hidden class="mt-8 rounded-3xl bg-white p-8 text-center ring-1 ring-ink/5">
+        <p class="font-display text-2xl">Online-Bestellung gerade nicht möglich</p>
+        <p class="mt-2 text-ink-soft">Bitte bestellen Sie telefonisch – wir freuen uns auf Ihren Anruf.</p>
+        <a href={site.phoneHref} class="btn-primary mt-5"><Icon name="phone" class="size-4" /> {site.phone}</a>
+      </div>
+
+      <section id="cat-weekly" data-order-cat data-title="★ Wochenkarte" hidden class="scroll-mt-40 pt-8">
+        <h2 class="font-display text-3xl">Wochenkarte</h2>
+        <ul id="weekly-order-items" class="mt-4 space-y-2"></ul>
+      </section>
+
+      {
+        menu.map((cat) => (
+          <section id={`cat-${cat.id}`} data-order-cat data-title={cat.title} hidden class="scroll-mt-40 pt-8">
+            <h2 class="font-display text-3xl">{cat.title}</h2>
+            <p class="mt-1 text-sm tracking-wider text-ink-soft uppercase">{cat.subtitle}</p>
+            <ul class="mt-4 space-y-2">
+              {cat.items.map((item) => {
+                const key = itemKey(cat, item);
+                return (
+                  <li data-dish={key} data-name={item.nr ? `${item.nr} ${item.name}` : item.name} hidden class="dish">
+                    <div class="min-w-0 flex-1">
+                      <p class="font-semibold">
+                        {item.nr && <span class="mr-1 text-tomato/60">{item.nr}</span>}
+                        {item.name}
+                      </p>
+                      {item.desc && <p class="mt-0.5 text-sm text-ink-soft">{item.desc}</p>}
+                      <p data-dish-price class="font-display mt-1 text-lg" />
+                    </div>
+                    <div data-qty-control class="qty" />
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ))
+      }
+    </div>
+
+    <!-- Basket & checkout (sticky on desktop, bottom sheet on phones) -->
+    <aside id="checkout" class="checkout" aria-label="Warenkorb">
+      <form id="checkout-form" class="checkout-card" novalidate>
+        <div class="flex items-center justify-between">
+          <h2 class="font-display text-2xl">Ihre Bestellung</h2>
+          <button type="button" id="checkout-close" class="-mr-2 rounded-full p-2 md:hidden" aria-label="Schließen">
+            <Icon name="x" class="size-6" />
+          </button>
+        </div>
+
+        <p id="cart-empty" class="mt-4 rounded-2xl border border-dashed border-ink/15 p-6 text-center text-sm text-ink-soft">
+          Noch nichts im Warenkorb. Tippen Sie auf <strong>+</strong>, um Gerichte hinzuzufügen.
+        </p>
+        <ul id="cart-lines" class="mt-4 divide-y divide-ink/5"></ul>
+
+        <div id="checkout-fields" hidden>
+          <fieldset class="mt-6">
+            <legend class="text-sm font-medium">Wie möchten Sie Ihr Essen erhalten?</legend>
+            <div class="mt-1.5 grid grid-cols-2 gap-2">
+              <label class="cursor-pointer">
+                <input type="radio" name="mode" value="pickup" class="peer sr-only" checked />
+                <span class="mode-option">Abholung</span>
+              </label>
+              <label class="cursor-pointer" hidden={!site.delivery.enabled}>
+                <input type="radio" name="mode" value="delivery" class="peer sr-only" />
+                <span class="mode-option">Lieferung</span>
+              </label>
+            </div>
+            {site.delivery.area && <p data-delivery-only hidden class="mt-2 text-xs text-ink-soft">Liefergebiet: {site.delivery.area}</p>}
+          </fieldset>
+
+          <div class="mt-4 space-y-3">
+            <label class="block text-sm font-medium">
+              Name
+              <input name="name" autocomplete="name" required maxlength="80" class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Telefon
+              <input name="phone" type="tel" autocomplete="tel" required maxlength="30" class={field} />
+            </label>
+            <div data-delivery-only hidden class="space-y-3">
+              <label class="block text-sm font-medium">
+                Straße und Hausnummer
+                <input name="street" autocomplete="street-address" maxlength="120" class={field} />
+              </label>
+              <div class="grid grid-cols-[7rem_1fr] gap-3">
+                <label class="block text-sm font-medium">
+                  PLZ
+                  <input name="zip" autocomplete="postal-code" inputmode="numeric" maxlength="5" class={field} />
+                </label>
+                <label class="block text-sm font-medium">
+                  Etage / Klingel <span class="font-normal text-ink-soft">(opt.)</span>
+                  <input name="floor" maxlength="60" class={field} />
+                </label>
+              </div>
+            </div>
+            <label class="block text-sm font-medium">
+              <span id="time-label">Abholzeit</span>
+              <select name="time" class={field}></select>
+            </label>
+            <label class="block text-sm font-medium">
+              Anmerkung <span class="font-normal text-ink-soft">(optional)</span>
+              <textarea name="note" rows="2" maxlength="300" class={field} placeholder="z. B. ohne Zwiebeln, extra scharf…"></textarea>
+            </label>
+          </div>
+
+          <dl class="mt-6 space-y-1.5 border-t border-ink/10 pt-4 text-sm">
+            <div class="flex justify-between"><dt class="text-ink-soft">Zwischensumme</dt><dd id="sum-items"></dd></div>
+            <div data-delivery-only hidden class="flex justify-between"><dt class="text-ink-soft">Liefergebühr</dt><dd id="sum-fee"></dd></div>
+            <div class="flex justify-between pt-1 text-base font-semibold"><dt>Gesamt</dt><dd id="sum-total"></dd></div>
+          </dl>
+          <p class="mt-2 text-xs text-ink-soft">Bezahlung bei Abholung bzw. Lieferung – bar oder mit EC-Karte (girocard).</p>
+
+          <p id="checkout-error" class="mt-4 hidden rounded-xl bg-tomato/10 px-4 py-3 text-sm text-tomato-dark" role="alert"></p>
+
+          <button class="wa-button mt-5 w-full">
+            <svg viewBox="0 0 24 24" class="size-5" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2Zm0 18.2a8.2 8.2 0 0 1-4.2-1.2l-.3-.2-3 .8.8-2.9-.2-.3A8.2 8.2 0 1 1 12 20.2Zm4.5-6.1c-.2-.1-1.5-.7-1.7-.8s-.4-.1-.6.1-.7.8-.8 1-.3.2-.5.1a6.7 6.7 0 0 1-3.3-2.9c-.3-.4.2-.4.7-1.4a.5.5 0 0 0 0-.4l-.8-1.8c-.2-.5-.4-.4-.6-.4h-.5a1 1 0 0 0-.7.3 3 3 0 0 0-.9 2.2 5.2 5.2 0 0 0 1.1 2.7 11.8 11.8 0 0 0 4.5 4c1.7.7 2.3.8 3.2.6a2.7 2.7 0 0 0 1.8-1.3 2.2 2.2 0 0 0 .1-1.3c0-.1-.2-.2-.5-.3Z"/></svg>
+            Bestellanfrage per WhatsApp senden
+          </button>
+          <p class="mt-3 text-xs leading-relaxed text-ink-soft">
+            Die Bestellung ist erst nach unserer Bestätigung verbindlich. Beim Senden öffnet sich WhatsApp; dabei werden Ihre Angaben über
+            WhatsApp (Meta) an uns übermittelt – siehe <a href={`/${site.id}/datenschutz#bestellung`} class="underline">Datenschutz</a>.
+          </p>
+        </div>
+      </form>
+    </aside>
+  </div>
+
+  <!-- Phone: basket bar -->
+  <button id="cart-bar" hidden class="fixed inset-x-3 bottom-20 z-40 flex items-center gap-3 rounded-2xl bg-ink px-4 py-3.5 text-left text-cream shadow-2xl md:hidden">
+    <span id="cart-bar-count" class="grid size-8 place-items-center rounded-full bg-tomato text-sm font-semibold"></span>
+    <span class="flex-1 font-semibold">Warenkorb ansehen</span>
+    <span id="cart-bar-total" class="font-display text-lg"></span>
+  </button>
+
+  <!-- After sending -->
+  <div id="sent" hidden class="fixed inset-0 z-[70] grid place-items-center bg-ink/60 p-4 backdrop-blur-sm">
+    <div class="w-full max-w-md rounded-[2rem] bg-cream p-8 text-center shadow-2xl">
+      <span class="mx-auto grid size-16 place-items-center rounded-full bg-[#25d366] text-white">
+        <svg viewBox="0 0 24 24" class="size-8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5 10 17l9-10" /></svg>
+      </span>
+      <h2 class="font-display mt-5 text-3xl">Danke für Ihre Bestellung!</h2>
+      <p class="mt-3 text-ink-soft">
+        Bitte tippen Sie in WhatsApp noch auf <strong>Senden</strong>. Wir melden uns gleich, um Ihre Bestellung zu bestätigen.
+      </p>
+      <div class="mt-6 flex flex-col gap-2">
+        <a id="sent-again" href="#" target="_blank" rel="noopener" class="btn-outline">WhatsApp hat sich nicht geöffnet?</a>
+        <a href={site.phoneHref} class="btn-outline"><Icon name="phone" class="size-4" /> Lieber anrufen: {site.phone}</a>
+        <button id="sent-done" class="btn-primary">Fertig</button>
+      </div>
+    </div>
+  </div>
+</Base>
+
+<style>
+  :global(.dish) {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    border-radius: 1.25rem;
+    background: white;
+    padding: 1rem;
+    box-shadow: 0 0 0 1px rgb(28 25 23 / 0.05);
+  }
+  :global(.dish[hidden]) {
+    display: none;
+  }
+  :global(.dish.in-cart) {
+    box-shadow: 0 0 0 2px var(--color-tomato);
+  }
+  :global(.qty) {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+    flex-shrink: 0;
+  }
+  :global(.qty button) {
+    display: grid;
+    place-items: center;
+    width: 2.5rem;
+    height: 2.5rem;
+    border-radius: 999px;
+    font-size: 1.35rem;
+    line-height: 1;
+    font-weight: 600;
+    transition: transform 0.15s ease, background-color 0.2s ease;
+  }
+  :global(.qty button:active) {
+    transform: scale(0.9);
+  }
+  :global(.qty .add) {
+    background: var(--color-tomato);
+    color: white;
+    box-shadow: 0 6px 14px -6px rgb(200 52 31 / 0.6);
+  }
+  :global(.qty .minus) {
+    background: var(--color-cream-dark);
+  }
+  :global(.qty output) {
+    min-width: 1.5rem;
+    text-align: center;
+    font-weight: 600;
+  }
+  .mode-option {
+    display: flex;
+    height: 2.9rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 0.75rem;
+    border: 1px solid rgb(28 25 23 / 0.1);
+    background: white;
+    font-size: 0.9rem;
+    font-weight: 600;
+    transition: all 0.2s ease;
+  }
+  :global(.peer:checked) + .mode-option {
+    border-color: var(--color-ink);
+    background: var(--color-ink);
+    color: var(--color-cream);
+  }
+  :global(.peer:focus-visible) + .mode-option {
+    outline: 2px solid var(--color-tomato);
+    outline-offset: 2px;
+  }
+  .wa-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.6rem;
+    border-radius: 999px;
+    background: #25d366;
+    padding: 1rem 1.5rem;
+    font-weight: 700;
+    color: #073b1c;
+    box-shadow: 0 10px 24px -10px rgb(37 211 102 / 0.8);
+    transition: transform 0.15s ease, filter 0.2s ease;
+  }
+  .wa-button:hover {
+    filter: brightness(1.05);
+  }
+  .wa-button:active {
+    transform: scale(0.98);
+  }
+
+  /* Desktop: sticky card next to the menu. Phone: bottom sheet opened from the basket bar. */
+  .checkout-card {
+    border-radius: 1.75rem;
+    background: var(--color-cream);
+    padding: 1.25rem;
+  }
+  @media (min-width: 768px) {
+    .checkout {
+      position: sticky;
+      top: 6rem;
+      align-self: start;
+      max-height: calc(100vh - 7rem);
+      overflow-y: auto;
+    }
+    .checkout-card {
+      background: white;
+      padding: 1.5rem;
+      box-shadow:
+        0 0 0 1px rgb(28 25 23 / 0.05),
+        0 20px 40px -24px rgb(28 25 23 / 0.35);
+    }
+  }
+  @media (max-width: 767px) {
+    .checkout {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      overflow-y: auto;
+      background: rgb(28 25 23 / 0.55);
+      padding-top: 10vh;
+      opacity: 0;
+      visibility: hidden;
+      transition:
+        opacity 0.3s ease,
+        visibility 0.3s;
+    }
+    .checkout-card {
+      min-height: 90vh;
+      border-radius: 1.75rem 1.75rem 0 0;
+      padding-bottom: max(1.5rem, env(safe-area-inset-bottom));
+      transform: translateY(40px);
+      transition: transform 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+    }
+    .checkout[data-open] {
+      opacity: 1;
+      visibility: visible;
+    }
+    .checkout[data-open] .checkout-card {
+      transform: none;
+    }
+  }
+</style>
+
+<script>
+  import { euro, loadMenu } from '../../lib/menu-client';
+
+  type Slot = { open: number; close: number } | null;
+  type Config = {
+    location: 'ledi' | 'due';
+    name: string;
+    whatsapp: string;
+    phone: string;
+    delivery: { enabled: boolean; minOrder: number; fee: number; area: string };
+    schedule: Record<number, Slot>;
+  };
+  type Dish = { key: string; name: string; price: number };
+
+  const root = document.getElementById('order')!;
+  const config: Config = JSON.parse(root.dataset.config!);
+  const CART_KEY = `ledi-cart-${config.location}`;
+  const $ = <T extends HTMLElement = HTMLElement>(id: string) => document.getElementById(id) as T;
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+
+  const dishes = new Map<string, Dish>();
+  let cart: Record<string, number> = {};
+  try {
+    cart = JSON.parse(localStorage.getItem(CART_KEY) || '{}');
+  } catch {}
+  const saveCart = () => {
+    try {
+      localStorage.setItem(CART_KEY, JSON.stringify(cart));
+    } catch {}
+  };
+
+  // ---------- Opening hours (Berlin time) ----------
+  const berlinNow = () => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: 'Europe/Berlin', weekday: 'short', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date());
+    const get = (t: string) => parts.find((p) => p.type === t)!.value;
+    return { day: ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].indexOf(get('weekday')), minutes: Number(get('hour')) * 60 + Number(get('minute')) };
+  };
+  const hhmm = (m: number) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+  const timeSelect = document.querySelector<HTMLSelectElement>('[name=time]')!;
+
+  const fillTimes = () => {
+    const { day, minutes } = berlinNow();
+    const today = config.schedule[day];
+    const note = $('closed-note');
+    timeSelect.innerHTML = '';
+    const openNow = today && minutes >= today.open && minutes < today.close - 15;
+    if (openNow) timeSelect.add(new Option('So schnell wie möglich', 'So schnell wie möglich'));
+    if (today) {
+      const start = Math.max(today.open + 30, Math.ceil((minutes + 30) / 15) * 15);
+      for (let m = start; m <= today.close - 15; m += 15) timeSelect.add(new Option(`Heute ${hhmm(m)} Uhr`, `Heute ${hhmm(m)} Uhr`));
+    }
+    if (!timeSelect.options.length) {
+      // Closed for the rest of today: offer the next opening day.
+      for (let i = 1; i <= 7; i++) {
+        const d = (day + i) % 7;
+        const slot = config.schedule[d];
+        if (!slot) continue;
+        const label = i === 1 ? 'Morgen' : new Intl.DateTimeFormat('de-DE', { weekday: 'long', timeZone: 'UTC' }).format(new Date(Date.UTC(2024, 0, 7 + d)));
+        for (let m = slot.open + 30; m <= slot.close - 15; m += 15) timeSelect.add(new Option(`${label} ${hhmm(m)} Uhr`, `${label} ${hhmm(m)} Uhr`));
+        break;
+      }
+      note.textContent = 'Wir haben gerade geschlossen – Sie können aber schon jetzt für unseren nächsten Öffnungstag vorbestellen.';
+      note.hidden = false;
+    } else if (!openNow) {
+      note.textContent = `Wir öffnen heute um ${hhmm(today!.open)} Uhr – Sie können schon jetzt vorbestellen.`;
+      note.hidden = false;
+    }
+  };
+  fillTimes();
+
+  // ---------- Menu ----------
+  const qtyHtml = (key: string) => {
+    const n = cart[key] ?? 0;
+    return n
+      ? `<button type="button" class="minus" data-dec="${key}" aria-label="Weniger">–</button><output>${n}</output><button type="button" class="add" data-inc="${key}" aria-label="Mehr">+</button>`
+      : `<button type="button" class="add" data-inc="${key}" aria-label="In den Warenkorb">+</button>`;
+  };
+  const refreshDish = (key: string) => {
+    const li = document.querySelector<HTMLElement>(`[data-dish="${key}"]`);
+    if (!li) return;
+    li.querySelector<HTMLElement>('[data-qty-control]')!.innerHTML = qtyHtml(key);
+    li.classList.toggle('in-cart', Boolean(cart[key]));
+  };
+
+  loadMenu(config.location).then(({ weekly, prices, ok }) => {
+    $('menu-loading').hidden = true;
+
+    // Weekly dishes first.
+    const weeklyList = $('weekly-order-items');
+    weekly
+      .filter((w) => w.price !== null)
+      .forEach((w) => {
+        const key = `weekly-${w.id}`;
+        weeklyList.insertAdjacentHTML(
+          'beforeend',
+          `<li data-dish="${key}" data-name="${esc(w.name)}" class="dish">
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">${esc(w.name)}</p>
+              ${w.description ? `<p class="mt-0.5 text-sm text-ink-soft">${esc(w.description)}</p>` : ''}
+              <p data-dish-price class="font-display mt-1 text-lg"></p>
+            </div>
+            <div data-qty-control class="qty"></div>
+          </li>`,
+        );
+        prices[key] = w.price!;
+      });
+
+    document.querySelectorAll<HTMLElement>('[data-dish]').forEach((li) => {
+      const key = li.dataset.dish!;
+      const price = prices[key];
+      if (price === undefined) return;
+      dishes.set(key, { key, name: li.dataset.name!, price });
+      li.hidden = false;
+      li.querySelector('[data-dish-price]')!.textContent = euro(price);
+      refreshDish(key);
+    });
+
+    // Only categories with orderable dishes, plus their chips.
+    const chips = $('order-chips');
+    document.querySelectorAll<HTMLElement>('[data-order-cat]').forEach((cat) => {
+      cat.hidden = !cat.querySelector('[data-dish]:not([hidden])');
+      if (!cat.hidden)
+        chips.insertAdjacentHTML(
+          'beforeend',
+          `<a href="#${cat.id}" class="shrink-0 rounded-full border border-ink/10 bg-white px-4 py-2 text-sm font-medium whitespace-nowrap">${esc(cat.dataset.title!)}</a>`,
+        );
+    });
+
+    // Drop basket entries that are no longer on the menu.
+    for (const key of Object.keys(cart)) if (!dishes.has(key)) delete cart[key];
+    if (!ok || !dishes.size) $('menu-unavailable').hidden = false;
+    renderCart();
+  });
+
+  root.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-inc], [data-dec]');
+    if (!btn) return;
+    const key = btn.dataset.inc ?? btn.dataset.dec!;
+    cart[key] = Math.max(0, Math.min(50, (cart[key] ?? 0) + (btn.dataset.inc ? 1 : -1)));
+    if (!cart[key]) delete cart[key];
+    saveCart();
+    refreshDish(key);
+    renderCart();
+  });
+
+  // ---------- Basket ----------
+  const form = $<HTMLFormElement>('checkout-form');
+  const mode = () => (new FormData(form).get('mode') as 'pickup' | 'delivery') ?? 'pickup';
+  const totals = () => {
+    const items = Object.entries(cart).reduce((sum, [k, n]) => sum + (dishes.get(k)?.price ?? 0) * n, 0);
+    const fee = mode() === 'delivery' ? config.delivery.fee : 0;
+    return { items, fee, total: items + fee, count: Object.values(cart).reduce((a, b) => a + b, 0) };
+  };
+
+  function renderCart() {
+    const lines = Object.entries(cart).filter(([k]) => dishes.has(k));
+    $('cart-empty').hidden = lines.length > 0;
+    $('checkout-fields').hidden = lines.length === 0;
+    $('cart-lines').innerHTML = lines
+      .map(([k, n]) => {
+        const d = dishes.get(k)!;
+        return `<li class="flex items-center gap-3 py-3">
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-semibold">${esc(d.name)}</p>
+            <p class="text-xs text-ink-soft">${euro(d.price)} · ${n}×</p>
+          </div>
+          <div class="qty">${qtyHtml(k)}</div>
+        </li>`;
+      })
+      .join('');
+    const t = totals();
+    $('sum-items').textContent = euro(t.items);
+    $('sum-fee').textContent = t.fee ? euro(t.fee) : 'kostenlos';
+    $('sum-total').textContent = euro(t.total);
+    $('cart-bar').hidden = t.count === 0;
+    $('cart-bar-count').textContent = String(t.count);
+    $('cart-bar-total').textContent = euro(t.total);
+    if (!t.count) $('checkout').removeAttribute('data-open');
+  }
+  $('checkout').addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-inc], [data-dec]');
+    if (!btn) return;
+    e.stopPropagation();
+    const key = btn.dataset.inc ?? btn.dataset.dec!;
+    cart[key] = Math.max(0, Math.min(50, (cart[key] ?? 0) + (btn.dataset.inc ? 1 : -1)));
+    if (!cart[key]) delete cart[key];
+    saveCart();
+    refreshDish(key);
+    renderCart();
+  });
+
+  // Phone bottom sheet
+  const sheet = $('checkout');
+  $('cart-bar').addEventListener('click', () => sheet.setAttribute('data-open', ''));
+  $('checkout-close').addEventListener('click', () => sheet.removeAttribute('data-open'));
+  sheet.addEventListener('click', (e) => {
+    if (e.target === sheet) sheet.removeAttribute('data-open');
+  });
+
+  // Pickup / delivery
+  const applyMode = () => {
+    const delivery = mode() === 'delivery';
+    document.querySelectorAll<HTMLElement>('[data-delivery-only]').forEach((el) => (el.hidden = !delivery));
+    ['street', 'zip'].forEach((n) => ((form.elements.namedItem(n) as HTMLInputElement).required = delivery));
+    $('time-label').textContent = delivery ? 'Lieferzeit' : 'Abholzeit';
+    renderCart();
+  };
+  form.querySelectorAll('[name=mode]').forEach((r) => r.addEventListener('change', applyMode));
+
+  // ---------- Send via WhatsApp ----------
+  const error = $('checkout-error');
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    const delivery = mode() === 'delivery';
+    const t = totals();
+    let msg = '';
+    if (!t.count) msg = 'Ihr Warenkorb ist leer.';
+    else if (!form.checkValidity()) msg = delivery ? 'Bitte Name, Telefon und Lieferadresse ausfüllen.' : 'Bitte Name und Telefonnummer angeben.';
+    else if (delivery && !/^\d{5}$/.test(String(data.get('zip')).trim())) msg = 'Bitte eine gültige Postleitzahl angeben.';
+    else if (delivery && t.items < config.delivery.minOrder) msg = `Der Mindestbestellwert für Lieferungen beträgt ${euro(config.delivery.minOrder)}.`;
+    else if (!config.whatsapp) msg = `Die Online-Bestellung ist noch nicht eingerichtet. Bitte rufen Sie uns an: ${config.phone}`;
+    error.textContent = msg;
+    error.classList.toggle('hidden', !msg);
+    if (msg) return;
+
+    const text = [
+      `*Neue Bestellung – ${config.name}*`,
+      '',
+      ...Object.entries(cart).map(([k, n]) => {
+        const d = dishes.get(k)!;
+        return `${n}× ${d.name} – ${euro(d.price * n)}`;
+      }),
+      '',
+      delivery && t.fee ? `Liefergebühr: ${euro(t.fee)}` : '',
+      `*Gesamt: ${euro(t.total)}*`,
+      '',
+      `${delivery ? '🛵 Lieferung' : '🥡 Abholung'}: ${data.get('time')}`,
+      `Name: ${String(data.get('name')).trim()}`,
+      `Telefon: ${String(data.get('phone')).trim()}`,
+      delivery ? `Adresse: ${String(data.get('street')).trim()}, ${String(data.get('zip')).trim()} Berlin` : '',
+      delivery && String(data.get('floor')).trim() ? `Etage/Klingel: ${String(data.get('floor')).trim()}` : '',
+      String(data.get('note')).trim() ? `Anmerkung: ${String(data.get('note')).trim()}` : '',
+      '',
+      'Bezahlung: bar oder EC-Karte bei Übergabe',
+    ]
+      .filter((line, i, all) => line !== '' || (all[i - 1] !== '' && i > 0))
+      .join('\n');
+
+    const url = `https://wa.me/${config.whatsapp}?text=${encodeURIComponent(text)}`;
+    ($('sent-again') as HTMLAnchorElement).href = url;
+    window.open(url, '_blank', 'noopener');
+    sheet.removeAttribute('data-open');
+    $('sent').hidden = false;
+  });
+
+  $('sent-done').addEventListener('click', () => {
+    cart = {};
+    saveCart();
+    dishes.forEach((_, k) => refreshDish(k));
+    renderCart();
+    $('sent').hidden = true;
+  });
+</script>

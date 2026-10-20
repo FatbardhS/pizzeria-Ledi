@@ -1,0 +1,421 @@
+---
+// Staff page: edit this week's dishes and the prices of the regular menu.
+import Base from '../layouts/Base.astro';
+import Icon from '../components/Icon.astro';
+import { menu, itemKey } from '../data/menu';
+import { isAdmin, adminPassword } from '../lib/auth';
+import { isConfigured, listPrices, listWeekly } from '../lib/store';
+
+export const prerender = false;
+
+const loggedIn = await isAdmin(Astro.cookies);
+const failed = Astro.url.searchParams.has('fehler');
+const noPassword = !adminPassword();
+const configured = isConfigured();
+const [weekly, prices] = loggedIn ? await Promise.all([listWeekly(), listPrices()]) : [[], {}];
+
+const priceMenu = menu.map((cat) => ({
+  id: cat.id,
+  title: cat.title,
+  items: cat.items.map((item) => ({ key: itemKey(cat, item), nr: item.nr, name: item.name, desc: item.desc })),
+}));
+
+const field =
+  'mt-1.5 w-full rounded-xl border border-ink/10 bg-white px-4 py-3 text-base outline-none transition focus:border-tomato focus:ring-2 focus:ring-tomato/20';
+---
+
+<Base title="Verwaltung">
+  <meta slot="head" name="robots" content="noindex, nofollow" />
+
+  {
+    !loggedIn ? (
+      <section class="flex min-h-[100svh] items-center justify-center px-4 py-10">
+        <form method="post" action="/api/admin/login" class="w-full max-w-sm rounded-[2rem] bg-white p-8 shadow-xl ring-1 ring-ink/5">
+          <p class="font-script text-center text-5xl leading-none text-tomato">Ledi</p>
+          <h1 class="font-display mt-3 text-center text-2xl">Verwaltung</h1>
+          {noPassword ? (
+            <p class="mt-6 rounded-xl bg-tomato/10 px-4 py-3 text-sm text-tomato-dark">
+              Es ist noch kein Passwort eingerichtet (ADMIN_PASSWORD in Vercel).
+            </p>
+          ) : (
+            <>
+              <label class="mt-6 block text-sm font-medium">
+                Passwort
+                <input name="password" type="password" autocomplete="current-password" required autofocus class={field} />
+              </label>
+              {failed && <p class="mt-3 text-sm text-tomato-dark">Falsches Passwort.</p>}
+              <button class="btn-primary mt-6 w-full !py-3.5">Anmelden</button>
+            </>
+          )}
+        </form>
+      </section>
+    ) : (
+      <div class="mx-auto max-w-3xl px-4 pt-6 pb-32">
+        <header class="flex items-center justify-between gap-4">
+          <div>
+            <p class="font-script text-4xl leading-none text-tomato">Ledi</p>
+            <p class="text-xs font-semibold tracking-[0.25em] text-ink-soft uppercase">Verwaltung</p>
+          </div>
+          <form method="post" action="/api/admin/login">
+            <input type="hidden" name="logout" value="1" />
+            <button class="btn-outline !px-4 !py-2">Abmelden</button>
+          </form>
+        </header>
+
+        {!configured && (
+          <p class="mt-5 rounded-2xl bg-gold/15 px-4 py-3 text-sm text-[#7a5612]">
+            <strong>Testmodus:</strong> Supabase ist nicht verbunden – Änderungen gehen beim Neustart verloren.
+          </p>
+        )}
+
+        <nav class="mt-6 grid grid-cols-2 rounded-full bg-cream-dark p-1" role="tablist">
+          <button role="tab" data-tab="weekly" aria-selected="true" class="tab">Wochenkarte</button>
+          <button role="tab" data-tab="prices" aria-selected="false" class="tab">Preise</button>
+        </nav>
+
+        <!-- Weekly menu -->
+        <section data-panel="weekly" class="mt-6">
+          <div class="flex items-end justify-between gap-4">
+            <div>
+              <h1 class="font-display text-3xl">Wochenkarte</h1>
+              <p class="mt-1 text-sm text-ink-soft">Erscheint auf der Speisekarte und in der Online-Bestellung.</p>
+            </div>
+            <button id="add" class="btn-primary shrink-0 !px-4 !py-2.5">+ Gericht</button>
+          </div>
+
+          <form id="editor" class="mt-5 hidden rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink/5" novalidate>
+            <input type="hidden" name="id" />
+            <p id="editor-title" class="font-display text-xl">Neues Gericht</p>
+            <label class="mt-4 block text-sm font-medium">
+              Name
+              <input name="name" required maxlength="120" class={field} placeholder="z. B. Risotto ai Funghi" />
+            </label>
+            <label class="mt-3 block text-sm font-medium">
+              Beschreibung <span class="font-normal text-ink-soft">(optional)</span>
+              <textarea name="description" rows="2" maxlength="400" class={field}></textarea>
+            </label>
+            <div class="mt-3 grid grid-cols-2 gap-3">
+              <label class="block text-sm font-medium">
+                Preis (€)
+                <input name="price" inputmode="decimal" class={field} placeholder="14,50" />
+              </label>
+              <label class="block text-sm font-medium">
+                Zusatzstoffe
+                <input name="allergens" maxlength="60" class={field} placeholder="z. B. 8,16" />
+              </label>
+            </div>
+            <fieldset class="mt-4">
+              <legend class="text-sm font-medium">Standort</legend>
+              <div class="mt-1.5 grid grid-cols-3 gap-2">
+                {[['both', 'Beide'], ['ledi', 'Ledi'], ['due', 'Ledi Due']].map(([value, label]) => (
+                  <label class="cursor-pointer">
+                    <input type="radio" name="location" value={value} class="peer sr-only" checked={value === 'both'} />
+                    <span class="flex h-11 items-center justify-center rounded-xl border border-ink/10 text-sm font-semibold transition peer-checked:border-ink peer-checked:bg-ink peer-checked:text-cream">
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label class="mt-4 flex items-center gap-3 text-sm font-medium">
+              <input type="checkbox" name="active" checked class="size-5 accent-[var(--color-basil)]" /> Sichtbar auf der Website
+            </label>
+            <p id="editor-error" class="mt-3 hidden text-sm text-tomato-dark" role="alert"></p>
+            <div class="mt-5 flex gap-2">
+              <button class="btn-primary flex-1 !py-3">Speichern</button>
+              <button type="button" id="cancel" class="btn-outline !py-3">Abbrechen</button>
+            </div>
+          </form>
+
+          <ul id="weekly-list" class="mt-5 space-y-3"></ul>
+          <p id="weekly-empty" class="mt-5 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
+            Noch keine Gerichte für diese Woche.
+          </p>
+        </section>
+
+        <!-- Prices -->
+        <section data-panel="prices" class="mt-6" hidden>
+          <h1 class="font-display text-3xl">Preise</h1>
+          <p class="mt-1 text-sm text-ink-soft">
+            Nur Gerichte mit Preis können online bestellt werden. Feld leer lassen = nicht bestellbar.
+          </p>
+          <input id="price-search" type="search" placeholder="Gericht suchen…" class={`${field} mt-4`} />
+          <div id="price-list" class="mt-4 space-y-6">
+            {priceMenu.map((cat) => (
+              <div data-price-cat>
+                <h2 class="font-display text-xl">{cat.title}</h2>
+                <ul class="mt-2 divide-y divide-ink/5 rounded-2xl bg-white ring-1 ring-ink/5">
+                  {cat.items.map((item) => (
+                    <li data-price-row data-search={`${item.nr ?? ''} ${item.name}`.toLowerCase()} class="flex items-center gap-3 px-4 py-2.5">
+                      <span class="w-6 shrink-0 text-sm text-tomato/60">{item.nr}</span>
+                      <span class="min-w-0 flex-1 text-sm">
+                        <span class="block font-medium">{item.name}</span>
+                        {item.desc && <span class="block truncate text-xs text-ink-soft">{item.desc}</span>}
+                      </span>
+                      <label class="relative w-24 shrink-0">
+                        <span class="sr-only">Preis für {item.name}</span>
+                        <input
+                          data-key={item.key}
+                          inputmode="decimal"
+                          placeholder="–"
+                          class="w-full rounded-lg border border-ink/10 bg-cream py-2 pr-7 pl-3 text-right text-base outline-none focus:border-tomato data-[dirty]:border-gold data-[dirty]:bg-gold/10"
+                        />
+                        <span class="pointer-events-none absolute top-1/2 right-2.5 -translate-y-1/2 text-sm text-ink-soft">€</span>
+                      </label>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+          <div class="fixed inset-x-0 bottom-0 z-40 border-t border-ink/10 bg-cream/95 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] backdrop-blur-md">
+            <div class="mx-auto flex max-w-3xl items-center gap-3">
+              <p id="price-status" class="flex-1 text-sm text-ink-soft">Keine Änderungen</p>
+              <button id="save-prices" class="btn-primary !py-3" disabled>Preise speichern</button>
+            </div>
+          </div>
+        </section>
+      </div>
+    )
+  }
+
+  <script is:inline type="application/json" id="admin-data" set:html={JSON.stringify({ weekly, prices }).replace(/</g, '\\u003c')} />
+  <div id="toast" class="pointer-events-none fixed top-4 left-1/2 z-[95] -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream opacity-0 shadow-lg transition"></div>
+</Base>
+
+<style>
+  .tab {
+    border-radius: 999px;
+    padding: 0.65rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: var(--color-ink-soft);
+    transition: all 0.2s ease;
+  }
+  .tab[aria-selected='true'] {
+    background: white;
+    color: var(--color-ink);
+    box-shadow: 0 1px 4px rgb(28 25 23 / 0.12);
+  }
+  #save-prices:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+  import type { WeeklyItem } from '../lib/store';
+
+  const dataEl = document.getElementById('admin-data');
+  const list = document.getElementById('weekly-list');
+  if (dataEl && list) {
+    const data = JSON.parse(dataEl.textContent || '{}') as { weekly: WeeklyItem[]; prices: Record<string, number> };
+    let weekly = data.weekly;
+
+    const euro = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
+    const parsePrice = (s: string) => {
+      const clean = s.trim().replace(/\s|€/g, '').replace(',', '.');
+      if (!clean) return null;
+      const n = Number(clean);
+      return Number.isFinite(n) && n >= 0 ? Math.round(n * 100) / 100 : NaN;
+    };
+    const toast = (msg: string) => {
+      const t = document.getElementById('toast')!;
+      t.textContent = msg;
+      t.style.opacity = '1';
+      setTimeout(() => (t.style.opacity = '0'), 2200);
+    };
+    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+    const send = async (url: string, method: string, body?: unknown) => {
+      const res = await fetch(url, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : undefined,
+        body: body ? JSON.stringify(body) : undefined,
+      });
+      if (res.status === 401) location.reload();
+      if (!res.ok) throw new Error((await res.text()) || 'Fehler beim Speichern');
+      return res.status === 204 ? null : res.json();
+    };
+
+    // Tabs
+    const tabs = [...document.querySelectorAll<HTMLButtonElement>('[data-tab]')];
+    const showTab = (id: string) => {
+      tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
+      document.querySelectorAll<HTMLElement>('[data-panel]').forEach((p) => (p.hidden = p.dataset.panel !== id));
+      try {
+        sessionStorage.setItem('ledi-admin-tab', id);
+      } catch {}
+    };
+    tabs.forEach((t) => t.addEventListener('click', () => showTab(t.dataset.tab!)));
+    try {
+      const saved = sessionStorage.getItem('ledi-admin-tab');
+      if (saved) showTab(saved);
+    } catch {}
+
+    // ---- Weekly menu ----
+    const editor = document.getElementById('editor') as HTMLFormElement;
+    const editorError = document.getElementById('editor-error')!;
+    const places = { both: 'Beide Standorte', ledi: 'Nur Ledi', due: 'Nur Ledi Due' };
+
+    const render = () => {
+      document.getElementById('weekly-empty')!.classList.toggle('hidden', weekly.length > 0);
+      list.innerHTML = weekly
+        .map(
+          (w) => `
+        <li class="rounded-3xl bg-white p-4 ring-1 ring-ink/5 ${w.active ? '' : 'opacity-60'}">
+          <div class="flex items-start gap-3">
+            <div class="min-w-0 flex-1">
+              <p class="font-semibold">${esc(w.name)}</p>
+              ${w.description ? `<p class="mt-0.5 text-sm text-ink-soft">${esc(w.description)}</p>` : ''}
+              <p class="mt-2 flex flex-wrap gap-1.5 text-xs">
+                <span class="rounded-full bg-cream-dark px-2.5 py-1 font-medium">${places[w.location]}</span>
+                ${w.active ? '' : '<span class="rounded-full bg-ink/10 px-2.5 py-1 font-medium">Ausgeblendet</span>'}
+                ${w.price === null ? '<span class="rounded-full bg-gold/20 px-2.5 py-1 font-medium">Kein Preis – nicht bestellbar</span>' : ''}
+              </p>
+            </div>
+            <p class="font-display shrink-0 text-xl">${w.price === null ? '–' : euro(w.price)}</p>
+          </div>
+          <div class="mt-3 flex gap-2 border-t border-ink/5 pt-3">
+            <button data-edit="${w.id}" class="btn-outline flex-1 !py-2">Bearbeiten</button>
+            <button data-toggle="${w.id}" class="btn-outline !py-2">${w.active ? 'Ausblenden' : 'Einblenden'}</button>
+            <button data-delete="${w.id}" class="btn-outline !py-2 !text-tomato" aria-label="Löschen">✕</button>
+          </div>
+        </li>`,
+        )
+        .join('');
+    };
+
+    const openEditor = (item?: WeeklyItem) => {
+      editor.reset();
+      editorError.classList.add('hidden');
+      const f = editor.elements as unknown as Record<string, HTMLInputElement>;
+      document.getElementById('editor-title')!.textContent = item ? 'Gericht bearbeiten' : 'Neues Gericht';
+      f.id.value = item?.id ?? '';
+      f.name.value = item?.name ?? '';
+      (editor.elements.namedItem('description') as HTMLTextAreaElement).value = item?.description ?? '';
+      f.price.value = item?.price === null || item?.price === undefined ? '' : String(item.price).replace('.', ',');
+      f.allergens.value = item?.allergens ?? '';
+      editor.querySelector<HTMLInputElement>(`[name=location][value=${item?.location ?? 'both'}]`)!.checked = true;
+      f.active.checked = item?.active ?? true;
+      editor.classList.remove('hidden');
+      editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      f.name.focus({ preventScroll: true });
+    };
+
+    document.getElementById('add')!.addEventListener('click', () => openEditor());
+    document.getElementById('cancel')!.addEventListener('click', () => editor.classList.add('hidden'));
+
+    editor.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(editor);
+      const price = parsePrice(String(fd.get('price')));
+      const error = !String(fd.get('name')).trim() ? 'Bitte einen Namen eingeben.' : Number.isNaN(price) ? 'Preis bitte als Zahl, z. B. 14,50.' : '';
+      editorError.textContent = error;
+      editorError.classList.toggle('hidden', !error);
+      if (error) return;
+      const id = String(fd.get('id'));
+      const existing = weekly.find((w) => w.id === id);
+      try {
+        const saved: WeeklyItem = await send('/api/admin/weekly', 'POST', {
+          id: id || undefined,
+          name: fd.get('name'),
+          description: fd.get('description'),
+          price,
+          allergens: fd.get('allergens'),
+          location: fd.get('location'),
+          active: fd.get('active') === 'on',
+          sort: existing?.sort ?? weekly.length,
+        });
+        weekly = existing ? weekly.map((w) => (w.id === saved.id ? saved : w)) : [...weekly, saved];
+        render();
+        editor.classList.add('hidden');
+        toast('Gespeichert ✓');
+      } catch (err) {
+        editorError.textContent = (err as Error).message;
+        editorError.classList.remove('hidden');
+      }
+    });
+
+    list.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('button');
+      if (!btn) return;
+      const item = weekly.find((w) => w.id === (btn.dataset.edit ?? btn.dataset.toggle ?? btn.dataset.delete));
+      if (!item) return;
+      try {
+        if (btn.dataset.edit) openEditor(item);
+        else if (btn.dataset.toggle) {
+          const saved: WeeklyItem = await send('/api/admin/weekly', 'POST', { ...item, active: !item.active });
+          weekly = weekly.map((w) => (w.id === saved.id ? saved : w));
+          render();
+          toast(saved.active ? 'Wieder sichtbar' : 'Ausgeblendet');
+        } else if (btn.dataset.delete && confirm(`„${item.name}“ wirklich löschen?`)) {
+          await send(`/api/admin/weekly?id=${encodeURIComponent(item.id)}`, 'DELETE');
+          weekly = weekly.filter((w) => w.id !== item.id);
+          render();
+          toast('Gelöscht');
+        }
+      } catch (err) {
+        toast((err as Error).message);
+      }
+    });
+    render();
+
+    // ---- Prices ----
+    const inputs = [...document.querySelectorAll<HTMLInputElement>('[data-key]')];
+    const saveBtn = document.getElementById('save-prices') as HTMLButtonElement;
+    const status = document.getElementById('price-status')!;
+    let saved = { ...data.prices };
+    const show = (n: number | undefined) => (n === undefined ? '' : n.toFixed(2).replace('.', ','));
+    inputs.forEach((i) => (i.value = show(saved[i.dataset.key!])));
+
+    const changes = () => {
+      const out: Record<string, number | null> = {};
+      let invalid = 0;
+      inputs.forEach((i) => {
+        const p = parsePrice(i.value);
+        if (Number.isNaN(p)) return invalid++;
+        if ((p ?? undefined) !== saved[i.dataset.key!]) out[i.dataset.key!] = p;
+      });
+      return { out, invalid };
+    };
+    const refresh = () => {
+      const { out, invalid } = changes();
+      const n = Object.keys(out).length;
+      inputs.forEach((i) => i.toggleAttribute('data-dirty', i.dataset.key! in out || Number.isNaN(parsePrice(i.value))));
+      status.textContent = invalid ? `${invalid} ungültige Eingabe(n)` : n ? `${n} Änderung(en)` : 'Keine Änderungen';
+      saveBtn.disabled = !n || invalid > 0;
+    };
+    inputs.forEach((i) => i.addEventListener('input', refresh));
+
+    saveBtn.addEventListener('click', async () => {
+      const { out } = changes();
+      saveBtn.disabled = true;
+      try {
+        await send('/api/admin/prices', 'POST', { prices: out });
+        for (const [k, v] of Object.entries(out)) {
+          if (v === null) delete saved[k];
+          else saved[k] = v;
+        }
+        inputs.forEach((i) => (i.value = show(saved[i.dataset.key!])));
+        refresh();
+        toast('Preise gespeichert ✓');
+      } catch (err) {
+        toast((err as Error).message);
+        refresh();
+      }
+    });
+
+    const search = document.getElementById('price-search') as HTMLInputElement;
+    search.addEventListener('input', () => {
+      const q = search.value.trim().toLowerCase();
+      document.querySelectorAll<HTMLElement>('[data-price-row]').forEach((r) => (r.hidden = !!q && !r.dataset.search!.includes(q)));
+      document.querySelectorAll<HTMLElement>('[data-price-cat]').forEach(
+        (c) => (c.hidden = !c.querySelector('[data-price-row]:not([hidden])')),
+      );
+    });
+
+    window.addEventListener('beforeunload', (e) => {
+      if (Object.keys(changes().out).length) e.preventDefault();
+    });
+  }
+</script>

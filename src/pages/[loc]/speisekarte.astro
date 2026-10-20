@@ -1,8 +1,8 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
-import { menu, allergenLegend } from '../../data/menu';
-import { brand, locationPaths } from '../../data/site';
+import { menu, allergenLegend, itemKey } from '../../data/menu';
+import { locationPaths } from '../../data/site';
 
 export const getStaticPaths = locationPaths;
 const { location: site } = Astro.props;
@@ -21,10 +21,10 @@ const groups = [
       Alle Pizzen kommen aus dem Steinofen – nach traditioneller Machart, ohne Blech gebacken.
     </p>
     <div class="hero-in mt-6 flex flex-wrap gap-3" style="--delay:460ms">
-      <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-primary">
+      <a href={`/${site.id}/bestellen`} class="btn-primary">
         <Icon name="bag" class="size-4" /> Online bestellen
       </a>
-      <a href={brand.weeklyMenuPdf} target="_blank" rel="noopener" class="btn-outline">
+      <a href="#wochenkarte" data-weekly-link hidden class="btn-outline">
         <Icon name="file" class="size-4" /> Wochenkarte
       </a>
     </div>
@@ -44,6 +44,14 @@ const groups = [
         />
       </label>
       <nav id="chips" class="scrollbar-none -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 sm:mx-0 sm:px-0" aria-label="Kategorien">
+        <a
+          href="#wochenkarte"
+          data-chip="wochenkarte"
+          hidden
+          class="shrink-0 rounded-full border border-gold/50 bg-gold/15 px-4 py-2 text-sm font-semibold whitespace-nowrap transition data-[active]:border-ink data-[active]:bg-ink data-[active]:text-cream"
+        >
+          ★ Wochenkarte
+        </a>
         {
           menu.map((cat) => (
             <a
@@ -59,7 +67,15 @@ const groups = [
     </div>
   </div>
 
-  <div class="container-page py-10 md:py-14">
+  <div class="container-page py-10 md:py-14" data-location={site.id}>
+    <!-- Filled from /api/menu (edited on /admin); stays hidden when there is nothing this week. -->
+    <section id="wochenkarte" data-category hidden class="scroll-mt-44 md:scroll-mt-48 mb-6 rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-8 md:py-10">
+      <p class="eyebrow !text-gold">Jede Woche neu</p>
+      <h2 class="font-display text-3xl md:text-4xl">Wochenkarte</h2>
+      <p class="mt-1 text-sm text-cream/60">Nur solange der Vorrat reicht.</p>
+      <ul id="weekly-items" class="mt-6 grid gap-x-10 gap-y-1 md:grid-cols-2"></ul>
+    </section>
+
     <p id="no-results" class="hidden py-16 text-center text-ink-soft">Leider nichts gefunden. Versuchen Sie einen anderen Begriff.</p>
 
     {
@@ -105,6 +121,7 @@ const groups = [
                         {item.desc && <p class="mt-1 text-sm text-ink-soft">{item.desc}</p>}
                         {item.allergens && <p class="mt-1 text-xs text-ink-soft/60">Zusatzstoffe: {item.allergens}</p>}
                       </div>
+                      <span data-price={itemKey(cat, item)} class="font-display shrink-0 pt-0.5 text-lg"></span>
                     </li>
                   ))}
                 </ul>
@@ -130,6 +147,8 @@ const groups = [
 </Base>
 
 <script>
+  import { euro, loadMenu } from '../../lib/menu-client';
+
   const chips = [...document.querySelectorAll<HTMLAnchorElement>('[data-chip]')];
   const sections = [...document.querySelectorAll<HTMLElement>('[data-category]')];
   const chipNav = document.getElementById('chips')!;
@@ -147,6 +166,32 @@ const groups = [
     { rootMargin: '-45% 0px -50% 0px' },
   );
   sections.forEach((s) => spy.observe(s));
+
+  // Weekly dishes and prices come from the admin page.
+  const loc = document.querySelector<HTMLElement>('[data-location]')!.dataset.location as 'ledi' | 'due';
+  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  loadMenu(loc).then(({ weekly, prices }) => {
+    document.querySelectorAll<HTMLElement>('[data-price]').forEach((el) => {
+      const p = prices[el.dataset.price!];
+      el.textContent = p === undefined ? '' : euro(p);
+    });
+    if (!weekly.length) return;
+    document.getElementById('weekly-items')!.innerHTML = weekly
+      .map(
+        (w) => `
+      <li data-item data-search="${esc(`${w.name} ${w.description ?? ''}`.toLowerCase())}" class="flex gap-4 rounded-2xl px-3 py-4 hover:bg-white/5">
+        <div class="min-w-0 flex-1">
+          <p class="font-semibold">${esc(w.name)}</p>
+          ${w.description ? `<p class="mt-1 text-sm text-cream/70">${esc(w.description)}</p>` : ''}
+          ${w.allergens ? `<p class="mt-1 text-xs text-cream/40">Zusatzstoffe: ${esc(w.allergens)}</p>` : ''}
+        </div>
+        ${w.price === null ? '' : `<span class="font-display shrink-0 pt-0.5 text-lg text-gold">${euro(w.price)}</span>`}
+      </li>`,
+      )
+      .join('');
+    document.querySelectorAll<HTMLElement>('#wochenkarte, [data-chip="wochenkarte"], [data-weekly-link]').forEach((el) => (el.hidden = false));
+    if (location.hash === '#wochenkarte') document.getElementById('wochenkarte')!.scrollIntoView();
+  });
 
   // Live search across all dishes and drinks.
   const input = document.getElementById('menu-search') as HTMLInputElement;

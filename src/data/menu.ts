@@ -259,3 +259,15 @@ export const menu: MenuCategory[] = [
 
 export const allergenLegend =
   '1 Süßungsmittel · 2 chininhaltig · 3 mit Farbstoff · 4 koffeinhaltig · 5 taurinhaltig · 6 Antioxidationsmittel · 7 mit Phosphat · 8 mit Milcheiweiß · 9 mit Konservierungsstoffen · 10 gewachst · 11 geschwefelt · 12 geschwärzt · 13 enthält eine Phenylalaninquelle · 14 mit Geschmacksverstärker · 15 Formfleisch aus Vorderschinkenanteilen · 16 glutenhaltiges Getreide · 17 Sellerie · 18 Krebstiere · 19 Lupine · 20 Sesam · 21 Fisch · 22 Senf · 23 Erdnüsse · 24 Milch · 25 Schalenfrüchte (Nüsse) · 26 Eier · 27 Weichtiere · 28 Soja · 29 enthält Sulfite';
+
+/** Stable id for a dish, used for its price in the database (menu_prices.item_key). */
+export const itemKey = (cat: MenuCategory, item: MenuItem) =>
+  `${cat.id}-${
+    item.nr ??
+    item.name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+  }`;
