@@ -21,8 +21,10 @@ export type WeeklyInput = Omit<WeeklyItem, 'id'> & { id?: string };
 let client: SupabaseClient | null | undefined;
 const db = () => {
   if (client === undefined) {
-    const url = getSecret('SUPABASE_URL');
-    const key = getSecret('SUPABASE_SERVICE_ROLE_KEY');
+    const raw = getSecret('SUPABASE_URL')?.trim();
+    const key = getSecret('SUPABASE_SERVICE_ROLE_KEY')?.trim();
+    // Accept the API URL copied with a path (e.g. ".../rest/v1/"): the client needs only the origin.
+    const url = raw ? new URL(raw).origin : undefined;
     client = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
   }
   return client;
