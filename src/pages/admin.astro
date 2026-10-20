@@ -3,14 +3,14 @@
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import { menu, itemKey } from '../data/menu';
-import { isAdmin, adminPassword } from '../lib/auth';
+import { isAdmin, hasPassword } from '../lib/auth';
 import { isConfigured, listPrices, listWeekly } from '../lib/store';
 
 export const prerender = false;
 
 const loggedIn = await isAdmin(Astro.cookies);
 const failed = Astro.url.searchParams.has('fehler');
-const noPassword = !adminPassword();
+const noPassword = !(await hasPassword());
 const configured = isConfigured();
 const [weekly, prices] = loggedIn ? await Promise.all([listWeekly(), listPrices()]) : [[], {}];
 
@@ -68,9 +68,10 @@ const field =
           </p>
         )}
 
-        <nav class="mt-6 grid grid-cols-2 rounded-full bg-cream-dark p-1" role="tablist">
+        <nav class="mt-6 grid grid-cols-3 rounded-full bg-cream-dark p-1" role="tablist">
           <button role="tab" data-tab="weekly" aria-selected="true" class="tab">Wochenkarte</button>
           <button role="tab" data-tab="prices" aria-selected="false" class="tab">Preise</button>
+          <button role="tab" data-tab="account" aria-selected="false" class="tab">Konto</button>
         </nav>
 
         <!-- Weekly menu -->
@@ -131,6 +132,28 @@ const field =
           <p id="weekly-empty" class="mt-5 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
             Noch keine Gerichte für diese Woche.
           </p>
+        </section>
+
+        <!-- Account -->
+        <section data-panel="account" class="mt-6" hidden>
+          <h1 class="font-display text-3xl">Passwort ändern</h1>
+          <p class="mt-1 text-sm text-ink-soft">Danach müssen sich alle anderen Geräte neu anmelden.</p>
+          <form id="password-form" class="mt-5 space-y-3 rounded-3xl bg-white p-5 ring-1 ring-ink/5" novalidate>
+            <label class="block text-sm font-medium">
+              Aktuelles Passwort
+              <input name="current" type="password" autocomplete="current-password" required class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Neues Passwort <span class="font-normal text-ink-soft">(mind. 8 Zeichen)</span>
+              <input name="next" type="password" autocomplete="new-password" minlength="8" required class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Neues Passwort wiederholen
+              <input name="repeat" type="password" autocomplete="new-password" required class={field} />
+            </label>
+            <p id="password-error" class="hidden text-sm text-tomato-dark" role="alert"></p>
+            <button class="btn-primary w-full !py-3">Passwort speichern</button>
+          </form>
         </section>
 
         <!-- Prices -->
@@ -412,6 +435,30 @@ const field =
       document.querySelectorAll<HTMLElement>('[data-price-cat]').forEach(
         (c) => (c.hidden = !c.querySelector('[data-price-row]:not([hidden])')),
       );
+    });
+
+    // ---- Password ----
+    const pwForm = document.getElementById('password-form') as HTMLFormElement;
+    const pwError = document.getElementById('password-error')!;
+    pwForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(pwForm);
+      const next = String(fd.get('next'));
+      const msg =
+        next.trim().length < 8 ? 'Das neue Passwort muss mindestens 8 Zeichen haben.'
+        : next !== String(fd.get('repeat')) ? 'Die neuen Passwörter stimmen nicht überein.'
+        : '';
+      pwError.textContent = msg;
+      pwError.classList.toggle('hidden', !msg);
+      if (msg) return;
+      try {
+        await send('/api/admin/password', 'POST', { current: fd.get('current'), next });
+        pwForm.reset();
+        toast('Passwort geändert ✓');
+      } catch (err) {
+        pwError.textContent = (err as Error).message;
+        pwError.classList.remove('hidden');
+      }
     });
 
     window.addEventListener('beforeunload', (e) => {

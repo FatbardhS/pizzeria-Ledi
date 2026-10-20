@@ -123,3 +123,31 @@ export async function savePrices(prices: Record<string, number | null>): Promise
     if (error) throw new Error(error.message);
   }
 }
+
+// ---- Admin settings (e.g. the password hash) ----
+const settings = new Map<string, string>();
+
+/** Returns null when the setting (or the admin_settings table) does not exist yet. */
+export async function getSetting(key: string): Promise<string | null> {
+  const supabase = db();
+  if (!supabase) return import.meta.env.DEV ? (settings.get(key) ?? null) : null;
+  const { data, error } = await supabase.from('admin_settings').select('value').eq('key', key).maybeSingle();
+  if (error) return null;
+  return data?.value ?? null;
+}
+
+export async function setSetting(key: string, value: string): Promise<void> {
+  const supabase = db();
+  if (!supabase) {
+    devOnly();
+    settings.set(key, value);
+    return;
+  }
+  const { error } = await supabase.from('admin_settings').upsert({ key, value, updated_at: new Date().toISOString() });
+  if (error)
+    throw new Error(
+      error.code === '42P01' || /admin_settings/.test(error.message)
+        ? 'Die Tabelle admin_settings fehlt – bitte den SQL-Code aus supabase/schema.sql erneut in Supabase ausführen.'
+        : error.message,
+    );
+}
