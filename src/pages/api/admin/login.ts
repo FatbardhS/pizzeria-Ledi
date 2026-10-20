@@ -10,6 +10,6 @@ export const POST: APIRoute = async ({ request, cookies, redirect, url }) => {
     cookies.delete(COOKIE, { path: '/' });
     return redirect('/admin', 303);
   }
-  const ok = await login(cookies, String(form.get('password') ?? ''), url.protocol === 'https:');
+  const ok = await login(cookies, String(form.get('password') ?? '').trim(), url.protocol === 'https:');
   return redirect(ok ? '/admin' : '/admin?fehler=1', 303);
 };

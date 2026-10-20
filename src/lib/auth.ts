@@ -6,7 +6,8 @@ import { getSecret } from 'astro:env/server';
 export const COOKIE = 'ledi_admin';
 
 /** In local development without ADMIN_PASSWORD the password is "admin". */
-export const adminPassword = () => getSecret('ADMIN_PASSWORD') || (import.meta.env.DEV ? 'admin' : null);
+// Trimmed: a value pasted into Vercel often carries a trailing space or line break.
+export const adminPassword = () => getSecret('ADMIN_PASSWORD')?.trim() || (import.meta.env.DEV ? 'admin' : null);
 
 const token = async (password: string) => {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
