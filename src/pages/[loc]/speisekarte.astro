@@ -1,7 +1,7 @@
 ---
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
-import { menu, allergenLegend, itemKey } from '../../data/menu';
+import { menu, allergenLegend, itemKey, priceOptions } from '../../data/menu';
 import { locationPaths } from '../../data/site';
 
 export const getStaticPaths = locationPaths;
@@ -21,7 +21,7 @@ const groups = [
       Alle Pizzen kommen aus dem Steinofen – nach traditioneller Machart, ohne Blech gebacken.
     </p>
     <div class="hero-in mt-6 flex flex-wrap gap-3" style="--delay:460ms">
-      <a href={`/${site.id}/bestellen`} class="btn-primary">
+      <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-primary">
         <Icon name="bag" class="size-4" /> Online bestellen
       </a>
       <a href="#wochenkarte" data-weekly-link hidden class="btn-outline">
@@ -69,11 +69,29 @@ const groups = [
 
   <div class="container-page py-10 md:py-14" data-location={site.id}>
     <!-- Photo(s) uploaded on /admin; stays hidden when there is none for this location. -->
-    <section id="wochenkarte" hidden class="scroll-mt-44 md:scroll-mt-48 mb-6 rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-8 md:py-10">
-      <p class="eyebrow !text-gold">Jede Woche neu</p>
-      <h2 class="font-display text-3xl md:text-4xl">Wochenkarte</h2>
-      <p class="mt-1 text-sm text-cream/60">Tippen Sie auf das Bild, um es groß anzuzeigen. Nur solange der Vorrat reicht.</p>
-      <div id="weekly-photos" class="mt-6 grid gap-4 md:grid-cols-2"></div>
+    <section
+      id="wochenkarte"
+      hidden
+      class="scroll-mt-44 md:scroll-mt-48 relative isolate mb-6 overflow-hidden rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-8 md:grid md:grid-cols-[1fr_minmax(0,26rem)] md:items-center md:gap-12 md:p-12 lg:grid-cols-[1fr_minmax(0,30rem)]"
+    >
+      <div aria-hidden="true" class="absolute -top-24 -left-24 -z-10 size-72 rounded-full bg-tomato/25 blur-3xl"></div>
+      <div>
+        <p class="eyebrow !text-gold">Jede Woche neu</p>
+        <h2 class="font-display text-4xl md:text-5xl">Wochenkarte</h2>
+        <p class="mt-3 max-w-md text-cream/70">
+          Frisch für diese Woche – hausgemachte Pasta, Pizza der Woche und Spezialitäten. Nur solange der Vorrat reicht.
+        </p>
+        <div class="mt-6 flex flex-wrap gap-3">
+          <button type="button" data-open-first class="btn-primary">
+            <Icon name="file" class="size-4" /> Groß anzeigen
+          </button>
+          <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-ghost">
+            <Icon name="bag" class="size-4" /> Online bestellen
+          </a>
+        </div>
+        <p class="mt-4 text-xs text-cream/50">Gerichte der Wochenkarte bestellen Sie gerne telefonisch: {site.phone}</p>
+      </div>
+      <div id="weekly-photos" class="mt-8 grid gap-4 md:mt-0"></div>
     </section>
 
     <dialog id="photo-viewer" class="photo-viewer" aria-label="Wochenkarte">
@@ -128,7 +146,18 @@ const groups = [
                         {item.desc && <p class="mt-1 text-sm text-ink-soft">{item.desc}</p>}
                         {item.allergens && <p class="mt-1 text-xs text-ink-soft/60">Zusatzstoffe: {item.allergens}</p>}
                       </div>
-                      <span data-price={itemKey(cat, item)} class="font-display shrink-0 pt-0.5 text-lg"></span>
+                      {item.variants?.length ? (
+                        <dl class="shrink-0 space-y-0.5 pt-1 text-right text-sm">
+                          {priceOptions(cat, item).map((o) => (
+                            <div class="flex items-baseline justify-end gap-3">
+                              <dt class="text-ink-soft">{o.label}</dt>
+                              <dd data-price={o.key} class="font-display min-w-[4.25rem] text-base" />
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <span data-price={itemKey(cat, item)} class="font-display shrink-0 pt-0.5 text-lg" />
+                      )}
                     </li>
                   ))}
                 </ul>
@@ -213,8 +242,9 @@ const groups = [
     document.getElementById('weekly-photos')!.innerHTML = weekly
       .map(
         (w) => `
-      <button type="button" data-photo="${w.url}" class="group block overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10" aria-label="Wochenkarte groß anzeigen">
-        <img src="${w.url}" alt="Wochenkarte" class="max-h-[80vh] w-full object-contain transition duration-500 group-hover:scale-[1.02]" />
+      <button type="button" data-photo="${w.url}" class="group relative mx-auto block w-full overflow-hidden rounded-2xl bg-white shadow-2xl shadow-black/40 ring-1 ring-white/10 md:rotate-1 md:transition md:duration-500 md:hover:rotate-0" aria-label="Wochenkarte groß anzeigen">
+        <img src="${w.url}" alt="Wochenkarte" class="max-h-[70vh] w-full object-contain transition duration-500 group-hover:scale-[1.02]" />
+        <span class="absolute right-3 bottom-3 rounded-full bg-ink/80 px-3 py-1.5 text-xs font-semibold text-cream backdrop-blur">⤢ Vergrößern</span>
       </button>`,
       )
       .join('');
@@ -225,7 +255,10 @@ const groups = [
 
   // Full-screen view of a Wochenkarte photo.
   weeklySection.addEventListener('click', (e) => {
-    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
+    const target = e.target as HTMLElement;
+    const btn = target.closest('[data-open-first]')
+      ? weeklySection.querySelector<HTMLElement>('[data-photo]')
+      : target.closest<HTMLElement>('[data-photo]');
     if (!btn) return;
     viewer.querySelector('img')!.src = btn.dataset.photo!;
     viewer.showModal();

@@ -12,7 +12,7 @@ export const POST: APIRoute = async ({ request, cookies }) => {
   if (!body || typeof body.prices !== 'object') return new Response('Ungültige Daten', { status: 400 });
   const prices: Record<string, number | null> = {};
   for (const [key, value] of Object.entries(body.prices as Record<string, unknown>)) {
-    if (!/^[a-z0-9-]{1,80}$/.test(key)) return new Response(`Ungültiger Schlüssel: ${key}`, { status: 400 });
+    if (!/^[a-z0-9-]{1,120}$/.test(key)) return new Response(`Ungültiger Schlüssel: ${key}`, { status: 400 });
     if (value === null || value === '') prices[key] = null;
     else {
       const n = Number(value);

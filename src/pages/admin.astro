@@ -2,7 +2,7 @@
 // Staff page: upload the Wochenkarte photo, set menu prices, change the password.
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
-import { menu, itemKey } from '../data/menu';
+import { menu, priceOptions } from '../data/menu';
 import { isAdmin, hasPassword } from '../lib/auth';
 import { isConfigured, listPrices, listWeeklyPhotos } from '../lib/store';
 
@@ -17,7 +17,9 @@ const [weekly, prices] = loggedIn ? await Promise.all([listWeeklyPhotos(), listP
 const priceMenu = menu.map((cat) => ({
   id: cat.id,
   title: cat.title,
-  items: cat.items.map((item) => ({ key: itemKey(cat, item), nr: item.nr, name: item.name, desc: item.desc })),
+  items: cat.items.flatMap((item) =>
+    priceOptions(cat, item).map(({ key, label }) => ({ key, label, nr: item.nr, name: item.name, desc: item.desc })),
+  ),
 }));
 
 const field =
@@ -150,14 +152,17 @@ const field =
                 <h2 class="font-display text-xl">{cat.title}</h2>
                 <ul class="mt-2 divide-y divide-ink/5 rounded-2xl bg-white ring-1 ring-ink/5">
                   {cat.items.map((item) => (
-                    <li data-price-row data-search={`${item.nr ?? ''} ${item.name}`.toLowerCase()} class="flex items-center gap-3 px-4 py-2.5">
+                    <li data-price-row data-search={`${item.nr ?? ''} ${item.name} ${item.label}`.toLowerCase()} class="flex items-center gap-3 px-4 py-2.5">
                       <span class="w-6 shrink-0 text-sm text-tomato/60">{item.nr}</span>
                       <span class="min-w-0 flex-1 text-sm">
-                        <span class="block font-medium">{item.name}</span>
+                        <span class="block font-medium">
+                          {item.name}
+                          {item.label && <span class="ml-1 rounded-full bg-cream-dark px-2 py-0.5 text-xs font-semibold">{item.label}</span>}
+                        </span>
                         {item.desc && <span class="block truncate text-xs text-ink-soft">{item.desc}</span>}
                       </span>
                       <label class="relative w-24 shrink-0">
-                        <span class="sr-only">Preis für {item.name}</span>
+                        <span class="sr-only">Preis für {item.name} {item.label}</span>
                         <input
                           data-key={item.key}
                           inputmode="decimal"

@@ -52,7 +52,7 @@ const path = Astro.url.pathname.replace(/\/$/, '') || '/';
           <Icon name="swap" class="size-3" /> Wechseln
         </span>
       </a>
-      <a href={`/${site.id}/bestellen`} class="btn-primary !px-3.5 !py-2.5 lg:!px-5" aria-label="Online bestellen">
+      <a href={site.orderUrl} target="_blank" rel="noopener" class="btn-primary !px-3.5 !py-2.5 lg:!px-5" aria-label="Online bestellen">
         <Icon name="bag" class="size-4" /> <span class="hidden lg:inline">Bestellen</span>
       </a>
     </nav>

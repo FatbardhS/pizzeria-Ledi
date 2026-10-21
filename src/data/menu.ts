@@ -4,6 +4,8 @@ export type MenuItem = {
   desc?: string;
   allergens?: string;
   tags?: ('vegetarisch' | 'scharf' | 'Haus-Tipp')[];
+  /** Sizes or kinds with their own price, e.g. ['0,2 l', '0,4 l']. */
+  variants?: string[];
 };
 
 export type MenuCategory = {
@@ -80,7 +82,7 @@ export const menu: MenuCategory[] = [
     subtitle: 'Vorspeisen',
     group: 'speisen',
     items: [
-      { nr: '32', name: 'Antipasto Misto', allergens: '3,6,9', desc: 'Parmaschinken, Salami piccante, Tomate-Mozzarella, getrocknete Tomaten, Artischocken, Paprika, Zucchini, Champignons, Rucola – dazu hausgemachtes Brot' },
+      { nr: '32', name: 'Antipasto Misto', allergens: '3,6,9', variants: ['1 Person', '2 Personen'], desc: 'Parmaschinken, Salami piccante, Tomate-Mozzarella, getrocknete Tomaten, Artischocken, Paprika, Zucchini, Champignons, Rucola – dazu hausgemachtes Brot' },
       { nr: '33', name: 'Mozzarella Caprese', allergens: '24', desc: 'Büffelmozzarella mit frischen Tomaten und Basilikum auf Rucolasalat', tags: ['vegetarisch'] },
       { nr: '37', name: 'Carpaccio di Manzo', allergens: '24', desc: 'Rinder-Carpaccio mit Rucolasalat, Parmesanraspeln und Champignons' },
       { nr: '38', name: 'Bruschetta', desc: '6 Stück – Tomaten, Zwiebeln, Knoblauch, Basilikum', tags: ['vegetarisch'] },
@@ -150,7 +152,7 @@ export const menu: MenuCategory[] = [
       { name: 'Campari Soda', allergens: '1', desc: '0,2 l' },
       { name: 'Aperol Spritz', desc: 'Prosecco & Aperol · 0,2 l' },
       { name: 'Hugo', desc: '0,2 l' },
-      { name: 'Prosecco', desc: '0,1 l · Flasche 0,75 l' },
+      { name: 'Prosecco', variants: ['0,1 l', 'Flasche 0,75 l'] },
       { name: 'Kir Royal', desc: '0,1 l' },
       { name: 'Bellini', desc: '0,1 l' },
       { name: 'Ramazzotti Rosato', desc: '0,1 l' },
@@ -180,17 +182,17 @@ export const menu: MenuCategory[] = [
   {
     id: 'vini',
     title: 'Vini',
-    subtitle: 'Offene Weine · 0,2 l / 0,5 l',
+    subtitle: 'Offene Weine',
     group: 'getraenke',
     items: [
-      { name: 'Grillo Sicilia', allergens: '29', desc: 'Weiß · trocken' },
-      { name: 'Pinot Grigio', allergens: '29', desc: 'Weiß · trocken' },
-      { name: 'Frizzantino', allergens: '29', desc: 'Weiß · lieblich' },
-      { name: 'Weißweinschorle', allergens: '29' },
-      { name: 'Merlot', allergens: '29', desc: 'Rot · trocken' },
-      { name: 'Nero d’Avola (Sicilia)', allergens: '29', desc: 'Rot · trocken' },
-      { name: 'Lambrusco', allergens: '29', desc: 'Rot · lieblich' },
-      { name: 'Rosé', allergens: '29', desc: 'trocken' },
+      { name: 'Grillo Sicilia', allergens: '29', desc: 'Weiß · trocken', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Pinot Grigio', allergens: '29', desc: 'Weiß · trocken', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Frizzantino', allergens: '29', desc: 'Weiß · lieblich', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Weißweinschorle', allergens: '29', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Merlot', allergens: '29', desc: 'Rot · trocken', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Nero d’Avola (Sicilia)', allergens: '29', desc: 'Rot · trocken', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Lambrusco', allergens: '29', desc: 'Rot · lieblich', variants: ['0,2 l', '0,5 l'] },
+      { name: 'Rosé', allergens: '29', desc: 'trocken', variants: ['0,2 l', '0,5 l'] },
     ],
   },
   {
@@ -199,9 +201,9 @@ export const menu: MenuCategory[] = [
     subtitle: 'Bier',
     group: 'getraenke',
     items: [
-      { name: 'Krombacher vom Fass', allergens: '16', desc: '0,2 l / 0,4 l' },
-      { name: 'Krušovice vom Fass', allergens: '16', desc: '0,3 l / 0,5 l' },
-      { name: 'Alsterwasser', allergens: '6,16', desc: '0,2 l / 0,4 l' },
+      { name: 'Krombacher vom Fass', allergens: '16', variants: ['0,2 l', '0,4 l'] },
+      { name: 'Krušovice vom Fass', allergens: '16', variants: ['0,3 l', '0,5 l'] },
+      { name: 'Alsterwasser', allergens: '6,16', variants: ['0,2 l', '0,4 l'] },
       { name: 'Herrenbräu / Herrenbräu Weizen', allergens: '16', desc: '0,5 l' },
       { name: 'Herrenbräu Kristallweizen', allergens: '16', desc: 'Fl. 0,5 l' },
       { name: 'König Pilsener alkoholfrei', allergens: '16', desc: 'Fl. 0,33 l' },
@@ -213,12 +215,12 @@ export const menu: MenuCategory[] = [
     subtitle: 'Alkoholfreie Getränke',
     group: 'getraenke',
     items: [
-      { name: 'San Pellegrino', desc: 'Fl. 0,25 l / 0,75 l' },
-      { name: 'Acqua Panna (still)', desc: 'Fl. 0,25 l / 0,75 l' },
-      { name: 'Tafelwasser mit / ohne Kohlensäure', desc: '0,2 l / 0,4 l' },
-      { name: 'Coca-Cola · Cola light · Fanta · Sprite · Spezi · Fassbrause', allergens: '1,3,4,6,13,16', desc: '0,2 l / 0,4 l' },
-      { name: 'Säfte', desc: 'Orange, Apfel, KiBa, Banane, Kirsch · 0,2 l / 0,4 l' },
-      { name: 'Apfelsaftschorle', desc: '0,2 l / 0,4 l' },
+      { name: 'San Pellegrino', variants: ['Fl. 0,25 l', 'Fl. 0,75 l'] },
+      { name: 'Acqua Panna (still)', variants: ['Fl. 0,25 l', 'Fl. 0,75 l'] },
+      { name: 'Tafelwasser mit / ohne Kohlensäure', variants: ['0,2 l', '0,4 l'] },
+      { name: 'Coca-Cola · Cola light · Fanta · Sprite · Spezi · Fassbrause', allergens: '1,3,4,6,13,16', variants: ['0,2 l', '0,4 l'] },
+      { name: 'Säfte', desc: 'Orange, Apfel, KiBa, Banane, Kirsch', variants: ['0,2 l', '0,4 l'] },
+      { name: 'Apfelsaftschorle', variants: ['0,2 l', '0,4 l'] },
       { name: 'Schweppes', allergens: '2,3,6', desc: 'Bitter Lemon, Tonic Water, Ginger Ale · 0,2 l' },
       { name: 'Bionade', desc: 'Holunder, Litschi, Kräuter, Ingwer-Orange, Naturtrübe Orange · Fl. 0,33 l' },
       { name: 'Orangina', allergens: '3,6', desc: 'Fl. 0,25 l' },
@@ -231,7 +233,7 @@ export const menu: MenuCategory[] = [
     subtitle: 'Warme Getränke',
     group: 'getraenke',
     items: [
-      { name: 'Espresso / Doppio / Macchiato', allergens: '4,24' },
+      { name: 'Espresso', allergens: '4,24', variants: ['Classico', 'Doppio', 'Macchiato'] },
       { name: 'Caffè Lungo', allergens: '4' },
       { name: 'Cappuccino', allergens: '4,24' },
       { name: 'Caffè Latte', allergens: '4,24', desc: 'Milchkaffee' },
@@ -249,7 +251,7 @@ export const menu: MenuCategory[] = [
       { name: 'Limoncello', allergens: '3' },
       { name: 'Sambuca' },
       { name: 'Amaretto', allergens: '3,25' },
-      { name: 'Grappa della Casa / di Bocchino / di Prosecco' },
+      { name: 'Grappa', variants: ['della Casa', 'di Bocchino', 'di Prosecco'] },
       { name: 'Ramazzotti · Averna · Fernet Branca · Fernet Menta', allergens: '3' },
       { name: 'Vecchia Romagna', allergens: '3,29', desc: 'Weinbrand' },
       { name: 'Jim Beam · Johnnie Walker Red Label', allergens: '3,16', desc: 'Whiskey' },
@@ -260,14 +262,19 @@ export const menu: MenuCategory[] = [
 export const allergenLegend =
   '1 Süßungsmittel · 2 chininhaltig · 3 mit Farbstoff · 4 koffeinhaltig · 5 taurinhaltig · 6 Antioxidationsmittel · 7 mit Phosphat · 8 mit Milcheiweiß · 9 mit Konservierungsstoffen · 10 gewachst · 11 geschwefelt · 12 geschwärzt · 13 enthält eine Phenylalaninquelle · 14 mit Geschmacksverstärker · 15 Formfleisch aus Vorderschinkenanteilen · 16 glutenhaltiges Getreide · 17 Sellerie · 18 Krebstiere · 19 Lupine · 20 Sesam · 21 Fisch · 22 Senf · 23 Erdnüsse · 24 Milch · 25 Schalenfrüchte (Nüsse) · 26 Eier · 27 Weichtiere · 28 Soja · 29 enthält Sulfite';
 
+const slug = (s: string) =>
+  s
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
 /** Stable id for a dish, used for its price in the database (menu_prices.item_key). */
-export const itemKey = (cat: MenuCategory, item: MenuItem) =>
-  `${cat.id}-${
-    item.nr ??
-    item.name
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[̀-ͯ]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, '')
-  }`;
+export const itemKey = (cat: MenuCategory, item: MenuItem) => `${cat.id}-${item.nr ?? slug(item.name)}`;
+
+/** One entry per price: the dish itself, or each of its variants (key "<itemKey>--<variant>"). */
+export const priceOptions = (cat: MenuCategory, item: MenuItem) =>
+  item.variants?.length
+    ? item.variants.map((label) => ({ key: `${itemKey(cat, item)}--${slug(label)}`, label }))
+    : [{ key: itemKey(cat, item), label: '' }];

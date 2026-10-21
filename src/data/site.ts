@@ -47,9 +47,7 @@ export const locations = {
     address: { street: 'Weitlingstraße 28', postalCode: '10317', city: '10317 Berlin' },
     ...maps('Weitlingstraße 28', '10317'),
     /** Online orders are sent here. International format, digits only, e.g. 4917612345678. TODO: real number for Ledi. */
-    whatsapp: '',
-    // TODO: confirm delivery terms with the restaurant.
-    delivery: { enabled: true, minOrder: 0, fee: 0, area: '' },
+    orderUrl: 'https://www.foodbooking.com/api/fb/_dd_o_j_v',
     reviewUrl: 'https://g.page/r/CQ12vECMDbsuEAo/review?id',
     schedule: { 0: evening, 1: null, 2: evening, 3: evening, 4: evening, 5: evening, 6: evening } as Schedule,
     hours: [
@@ -71,9 +69,7 @@ export const locations = {
     address: { street: 'Lückstraße 34', postalCode: '10317', city: '10317 Berlin' },
     ...maps('Lückstraße 34', '10317'),
     /** Online orders are sent here. International format, digits only, e.g. 4917612345678. TODO: real number for Ledi Due. */
-    whatsapp: '',
-    // TODO: confirm delivery terms with the restaurant.
-    delivery: { enabled: true, minOrder: 0, fee: 0, area: '' },
+    orderUrl: 'https://www.foodbooking.com/api/fb/_dd_o_j_v',
     reviewUrl: 'https://g.page/r/CQ12vECMDbsuEAo/review?id',
     schedule: { 0: { open: 12 * 60, close: 23 * 60 }, 1: null, 2: evening, 3: evening, 4: evening, 5: evening, 6: evening } as Schedule,
     hours: [

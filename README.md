@@ -32,11 +32,10 @@ Schriften liegen lokal (Fontsource), Google Maps lädt erst nach Zustimmung im C
 
 Fotos liegen in `public/images` (von der alten Website übernommen, als WebP verkleinert), die Wochenkarte in `public/files`. Titelbild (Holzofen): Arthur Brognoli / Unsplash.
 
-## Online-Bestellung & Verwaltung
+## Verwaltung (Wochenkarte, Preise)
 
-- `/ledi/bestellen`, `/due/bestellen` – Warenkorb; die Bestellung wird per WhatsApp an den jeweiligen Standort geschickt
-  (Nummer: `whatsapp` je Standort in `src/data/site.ts`, Lieferbedingungen: `delivery`).
-- `/admin` – Foto der Wochenkarte hochladen (je Standort), Preise der Speisekarte eintragen (nur Gerichte mit Preis sind bestellbar), Passwort ändern.
+- „Bestellen“ führt zur bestehenden Online-Bestellung (GloriaFood, `orderUrl` in `src/data/site.ts`).
+- `/admin` – Foto der Wochenkarte hochladen (je Standort), Preise der Speisekarte eintragen Passwort ändern.
 - Daten liegen in Supabase (`supabase/schema.sql`), gelesen über `/api/menu`.
 
 ### Einrichtung (einmalig)
