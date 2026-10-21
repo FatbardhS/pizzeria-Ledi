@@ -6,7 +6,13 @@ export const prerender = false;
 
 export const GET: APIRoute = async () => {
   try {
-    const [photos, prices] = await Promise.all([listWeeklyPhotos(), listPrices()]);
+    // One failing part (e.g. a table not created yet) must not hide the other.
+    const [photoResult, priceResult] = await Promise.allSettled([listWeeklyPhotos(), listPrices()]);
+    if (photoResult.status === 'rejected') console.error(photoResult.reason);
+    if (priceResult.status === 'rejected') console.error(priceResult.reason);
+    if (photoResult.status === 'rejected' && priceResult.status === 'rejected') throw priceResult.reason;
+    const photos = photoResult.status === 'fulfilled' ? photoResult.value : [];
+    const prices = priceResult.status === 'fulfilled' ? priceResult.value : {};
     return Response.json(
       {
         weekly: photos.filter((p) => p.active).map((p) => ({ id: p.id, location: p.location, url: `/api/wochenkarte/${p.id}` })),
