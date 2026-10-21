@@ -68,13 +68,20 @@ const groups = [
   </div>
 
   <div class="container-page py-10 md:py-14" data-location={site.id}>
-    <!-- Filled from /api/menu (edited on /admin); stays hidden when there is nothing this week. -->
-    <section id="wochenkarte" data-category hidden class="scroll-mt-44 md:scroll-mt-48 mb-6 rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-8 md:py-10">
+    <!-- Photo(s) uploaded on /admin; stays hidden when there is none for this location. -->
+    <section id="wochenkarte" hidden class="scroll-mt-44 md:scroll-mt-48 mb-6 rounded-[2rem] bg-ink px-5 py-8 text-cream sm:px-8 md:py-10">
       <p class="eyebrow !text-gold">Jede Woche neu</p>
       <h2 class="font-display text-3xl md:text-4xl">Wochenkarte</h2>
-      <p class="mt-1 text-sm text-cream/60">Nur solange der Vorrat reicht.</p>
-      <ul id="weekly-items" class="mt-6 grid gap-x-10 gap-y-1 md:grid-cols-2"></ul>
+      <p class="mt-1 text-sm text-cream/60">Tippen Sie auf das Bild, um es groß anzuzeigen. Nur solange der Vorrat reicht.</p>
+      <div id="weekly-photos" class="mt-6 grid gap-4 md:grid-cols-2"></div>
     </section>
+
+    <dialog id="photo-viewer" class="photo-viewer" aria-label="Wochenkarte">
+      <img alt="Wochenkarte" />
+      <button type="button" data-close class="absolute top-3 right-3 grid size-11 place-items-center rounded-full bg-white/90 text-ink shadow-lg" aria-label="Schließen">
+        <Icon name="x" class="size-6" />
+      </button>
+    </dialog>
 
     <p id="no-results" class="hidden py-16 text-center text-ink-soft">Leider nichts gefunden. Versuchen Sie einen anderen Begriff.</p>
 
@@ -146,6 +153,32 @@ const groups = [
   </div>
 </Base>
 
+<style>
+  .photo-viewer {
+    width: 100vw;
+    max-width: 100vw;
+    height: 100dvh;
+    max-height: 100dvh;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: rgb(28 25 23 / 0.95);
+  }
+  .photo-viewer[open] {
+    display: grid;
+    place-items: center;
+  }
+  .photo-viewer::backdrop {
+    background: transparent;
+  }
+  .photo-viewer img {
+    max-width: 100%;
+    max-height: 100dvh;
+    object-fit: contain;
+    touch-action: pinch-zoom;
+  }
+</style>
+
 <script>
   import { euro, loadMenu } from '../../lib/menu-client';
 
@@ -167,30 +200,38 @@ const groups = [
   );
   sections.forEach((s) => spy.observe(s));
 
-  // Weekly dishes and prices come from the admin page.
+  // Wochenkarte photos and prices come from the admin page.
   const loc = document.querySelector<HTMLElement>('[data-location]')!.dataset.location as 'ledi' | 'due';
-  const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+  const weeklySection = document.getElementById('wochenkarte')!;
+  const viewer = document.getElementById('photo-viewer') as HTMLDialogElement;
   loadMenu(loc).then(({ weekly, prices }) => {
     document.querySelectorAll<HTMLElement>('[data-price]').forEach((el) => {
       const p = prices[el.dataset.price!];
       el.textContent = p === undefined ? '' : euro(p);
     });
     if (!weekly.length) return;
-    document.getElementById('weekly-items')!.innerHTML = weekly
+    document.getElementById('weekly-photos')!.innerHTML = weekly
       .map(
         (w) => `
-      <li data-item data-search="${esc(`${w.name} ${w.description ?? ''}`.toLowerCase())}" class="flex gap-4 rounded-2xl px-3 py-4 hover:bg-white/5">
-        <div class="min-w-0 flex-1">
-          <p class="font-semibold">${esc(w.name)}</p>
-          ${w.description ? `<p class="mt-1 text-sm text-cream/70">${esc(w.description)}</p>` : ''}
-          ${w.allergens ? `<p class="mt-1 text-xs text-cream/40">Zusatzstoffe: ${esc(w.allergens)}</p>` : ''}
-        </div>
-        ${w.price === null ? '' : `<span class="font-display shrink-0 pt-0.5 text-lg text-gold">${euro(w.price)}</span>`}
-      </li>`,
+      <button type="button" data-photo="${w.url}" class="group block overflow-hidden rounded-2xl bg-white/5 ring-1 ring-white/10" aria-label="Wochenkarte groß anzeigen">
+        <img src="${w.url}" alt="Wochenkarte" class="max-h-[80vh] w-full object-contain transition duration-500 group-hover:scale-[1.02]" />
+      </button>`,
       )
       .join('');
     document.querySelectorAll<HTMLElement>('#wochenkarte, [data-chip="wochenkarte"], [data-weekly-link]').forEach((el) => (el.hidden = false));
-    if (location.hash === '#wochenkarte') document.getElementById('wochenkarte')!.scrollIntoView();
+    spy.observe(weeklySection);
+    if (location.hash === '#wochenkarte') weeklySection.scrollIntoView();
+  });
+
+  // Full-screen view of a Wochenkarte photo.
+  weeklySection.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>('[data-photo]');
+    if (!btn) return;
+    viewer.querySelector('img')!.src = btn.dataset.photo!;
+    viewer.showModal();
+  });
+  viewer.addEventListener('click', (e) => {
+    if (e.target === viewer || (e.target as HTMLElement).closest('[data-close]')) viewer.close();
   });
 
   // Live search across all dishes and drinks.
@@ -212,6 +253,7 @@ const groups = [
     document.querySelectorAll<HTMLElement>('[data-group]').forEach((g) => {
       g.hidden = !g.querySelector('[data-category]:not([hidden])');
     });
+    weeklySection.classList.toggle('!hidden', Boolean(q));
     empty.classList.toggle('hidden', total > 0);
   });
 </script>

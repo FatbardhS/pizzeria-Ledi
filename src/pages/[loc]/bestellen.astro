@@ -1,5 +1,5 @@
 ---
-// Online order: guests fill a basket from the priced menu (prices and weekly dishes come from /admin),
+// Online order: guests fill a basket from the priced menu (prices come from /admin),
 // enter their details and send the order to the restaurant's WhatsApp. Staff confirm it in the chat.
 import Base from '../../layouts/Base.astro';
 import Icon from '../../components/Icon.astro';
@@ -46,10 +46,19 @@ const field =
         <a href={site.phoneHref} class="btn-primary mt-5"><Icon name="phone" class="size-4" /> {site.phone}</a>
       </div>
 
-      <section id="cat-weekly" data-order-cat data-title="★ Wochenkarte" hidden class="scroll-mt-40 pt-8">
-        <h2 class="font-display text-3xl">Wochenkarte</h2>
-        <ul id="weekly-order-items" class="mt-4 space-y-2"></ul>
-      </section>
+      <a
+        id="weekly-hint"
+        hidden
+        href={`/${site.id}/speisekarte#wochenkarte`}
+        class="mt-6 flex items-center gap-4 rounded-3xl bg-ink p-5 text-cream transition hover:bg-ink/90"
+      >
+        <span class="grid size-11 shrink-0 place-items-center rounded-full bg-gold/20 text-gold"><Icon name="file" class="size-5" /></span>
+        <span class="min-w-0 flex-1 text-sm">
+          <span class="block font-semibold">Wochenkarte ansehen</span>
+          <span class="text-cream/70">Gerichte der Woche gerne in der Anmerkung angeben oder telefonisch bestellen.</span>
+        </span>
+        <Icon name="arrow" class="size-5 shrink-0" />
+      </a>
 
       {
         menu.map((cat) => (
@@ -423,25 +432,7 @@ const field =
   loadMenu(config.location).then(({ weekly, prices, ok }) => {
     $('menu-loading').hidden = true;
 
-    // Weekly dishes first.
-    const weeklyList = $('weekly-order-items');
-    weekly
-      .filter((w) => w.price !== null)
-      .forEach((w) => {
-        const key = `weekly-${w.id}`;
-        weeklyList.insertAdjacentHTML(
-          'beforeend',
-          `<li data-dish="${key}" data-name="${esc(w.name)}" class="dish">
-            <div class="min-w-0 flex-1">
-              <p class="font-semibold">${esc(w.name)}</p>
-              ${w.description ? `<p class="mt-0.5 text-sm text-ink-soft">${esc(w.description)}</p>` : ''}
-              <p data-dish-price class="font-display mt-1 text-lg"></p>
-            </div>
-            <div data-qty-control class="qty"></div>
-          </li>`,
-        );
-        prices[key] = w.price!;
-      });
+    $('weekly-hint').hidden = weekly.length === 0;
 
     document.querySelectorAll<HTMLElement>('[data-dish]').forEach((li) => {
       const key = li.dataset.dish!;

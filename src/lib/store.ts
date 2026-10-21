@@ -1,22 +1,19 @@
-// Weekly menu and menu prices. Production uses Supabase (see supabase/schema.sql);
+// Weekly menu photos, menu prices and admin settings. Production uses Supabase (see supabase/schema.sql);
 // local development without Supabase keys falls back to an in-memory store that resets on restart.
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { getSecret } from 'astro:env/server';
 
 export type WeeklyLocation = 'both' | 'ledi' | 'due';
 
-export type WeeklyItem = {
+/** A photo of the weekly menu (Wochenkarte), shown on the Speisekarte of one or both locations. */
+export type WeeklyPhoto = {
   id: string;
-  name: string;
-  description: string | null;
-  price: number | null;
-  allergens: string | null;
   location: WeeklyLocation;
   active: boolean;
-  sort: number;
+  createdAt: string;
 };
 
-export type WeeklyInput = Omit<WeeklyItem, 'id'> & { id?: string };
+const BUCKET = 'wochenkarte';
 
 let client: SupabaseClient | null | undefined;
 const db = () => {
@@ -33,61 +30,93 @@ const db = () => {
 export const isConfigured = () => db() !== null;
 
 // ---- In-memory fallback (development only) ----
-const memory = { weekly: [] as WeeklyItem[], prices: {} as Record<string, number> };
+const memory = {
+  photos: [] as (WeeklyPhoto & { bytes: Uint8Array; type: string })[],
+  prices: {} as Record<string, number>,
+};
 const devOnly = () => {
   if (!import.meta.env.DEV) throw new Error('Supabase ist nicht eingerichtet (SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY fehlen).');
 };
 
-const toItem = (row: Record<string, unknown>): WeeklyItem => ({
+const toPhoto = (row: Record<string, unknown>): WeeklyPhoto => ({
   id: String(row.id),
-  name: String(row.name),
-  description: (row.description as string) ?? null,
-  price: row.price === null || row.price === undefined ? null : Number(row.price),
-  allergens: (row.allergens as string) ?? null,
   location: row.location as WeeklyLocation,
   active: Boolean(row.active),
-  sort: Number(row.sort ?? 0),
+  createdAt: String(row.created_at),
 });
 
-const bySort = (a: WeeklyItem, b: WeeklyItem) => a.sort - b.sort || a.name.localeCompare(b.name, 'de');
-
-export async function listWeekly(): Promise<WeeklyItem[]> {
+/** Newest first. */
+export async function listWeeklyPhotos(): Promise<WeeklyPhoto[]> {
   const supabase = db();
   if (!supabase) {
     if (!import.meta.env.DEV) return [];
-    return [...memory.weekly].sort(bySort);
+    return memory.photos.map(({ bytes, type, ...p }) => p).reverse();
   }
-  const { data, error } = await supabase.from('weekly_items').select('*').order('sort').order('name');
+  const { data, error } = await supabase.from('weekly_photos').select('id, location, active, created_at').order('created_at', { ascending: false });
   if (error) throw new Error(error.message);
-  return data.map(toItem);
+  return data.map(toPhoto);
 }
 
-export async function saveWeekly(input: WeeklyInput): Promise<WeeklyItem> {
+export async function addWeeklyPhoto(bytes: Uint8Array, type: string, location: WeeklyLocation): Promise<WeeklyPhoto> {
   const supabase = db();
-  const { id, ...fields } = input;
+  const id = crypto.randomUUID();
   if (!supabase) {
     devOnly();
-    const item = { ...fields, id: id ?? crypto.randomUUID() };
-    memory.weekly = [...memory.weekly.filter((w) => w.id !== item.id), item];
-    return item;
+    const photo = { id, location, active: true, createdAt: new Date().toISOString() };
+    memory.photos.push({ ...photo, bytes, type });
+    return photo;
   }
-  const query = id
-    ? supabase.from('weekly_items').update(fields).eq('id', id)
-    : supabase.from('weekly_items').insert(fields);
-  const { data, error } = await query.select().single();
-  if (error) throw new Error(error.message);
-  return toItem(data);
+  const path = `${id}.${type === 'image/webp' ? 'webp' : 'jpg'}`;
+  const upload = await supabase.storage.from(BUCKET).upload(path, bytes, { contentType: type });
+  if (upload.error) throw new Error(upload.error.message);
+  const { data, error } = await supabase.from('weekly_photos').insert({ id, path, location }).select('id, location, active, created_at').single();
+  if (error) {
+    await supabase.storage.from(BUCKET).remove([path]);
+    throw new Error(error.message);
+  }
+  return toPhoto(data);
 }
 
-export async function deleteWeekly(id: string): Promise<void> {
+export async function updateWeeklyPhoto(id: string, fields: { location?: WeeklyLocation; active?: boolean }): Promise<WeeklyPhoto> {
   const supabase = db();
   if (!supabase) {
     devOnly();
-    memory.weekly = memory.weekly.filter((w) => w.id !== id);
+    const photo = memory.photos.find((p) => p.id === id);
+    if (!photo) throw new Error('Foto nicht gefunden');
+    Object.assign(photo, fields);
+    const { bytes, type, ...rest } = photo;
+    return rest;
+  }
+  const { data, error } = await supabase.from('weekly_photos').update(fields).eq('id', id).select('id, location, active, created_at').single();
+  if (error) throw new Error(error.message);
+  return toPhoto(data);
+}
+
+export async function deleteWeeklyPhoto(id: string): Promise<void> {
+  const supabase = db();
+  if (!supabase) {
+    devOnly();
+    memory.photos = memory.photos.filter((p) => p.id !== id);
     return;
   }
-  const { error } = await supabase.from('weekly_items').delete().eq('id', id);
+  const { data } = await supabase.from('weekly_photos').select('path').eq('id', id).maybeSingle();
+  const { error } = await supabase.from('weekly_photos').delete().eq('id', id);
   if (error) throw new Error(error.message);
+  if (data?.path) await supabase.storage.from(BUCKET).remove([data.path]);
+}
+
+/** The image itself, for /api/wochenkarte/[id] (the bucket is private). */
+export async function getWeeklyPhotoFile(id: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+  const supabase = db();
+  if (!supabase) {
+    const photo = import.meta.env.DEV ? memory.photos.find((p) => p.id === id) : undefined;
+    return photo ? { bytes: photo.bytes, type: photo.type } : null;
+  }
+  const { data } = await supabase.from('weekly_photos').select('path').eq('id', id).maybeSingle();
+  if (!data?.path) return null;
+  const file = await supabase.storage.from(BUCKET).download(data.path);
+  if (file.error || !file.data) return null;
+  return { bytes: new Uint8Array(await file.data.arrayBuffer()), type: file.data.type || 'image/jpeg' };
 }
 
 export async function listPrices(): Promise<Record<string, number>> {

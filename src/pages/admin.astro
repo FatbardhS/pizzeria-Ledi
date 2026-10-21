@@ -1,10 +1,10 @@
 ---
-// Staff page: edit this week's dishes and the prices of the regular menu.
+// Staff page: upload the Wochenkarte photo, set menu prices, change the password.
 import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import { menu, itemKey } from '../data/menu';
 import { isAdmin, hasPassword } from '../lib/auth';
-import { isConfigured, listPrices, listWeekly } from '../lib/store';
+import { isConfigured, listPrices, listWeeklyPhotos } from '../lib/store';
 
 export const prerender = false;
 
@@ -12,7 +12,7 @@ const loggedIn = await isAdmin(Astro.cookies);
 const failed = Astro.url.searchParams.has('fehler');
 const noPassword = !(await hasPassword());
 const configured = isConfigured();
-const [weekly, prices] = loggedIn ? await Promise.all([listWeekly(), listPrices()]) : [[], {}];
+const [weekly, prices] = loggedIn ? await Promise.all([listWeeklyPhotos(), listPrices()]) : [[], {}];
 
 const priceMenu = menu.map((cat) => ({
   id: cat.id,
@@ -74,43 +74,30 @@ const field =
           <button role="tab" data-tab="account" aria-selected="false" class="tab">Konto</button>
         </nav>
 
-        <!-- Weekly menu -->
+        <!-- Weekly menu photos -->
         <section data-panel="weekly" class="mt-6">
-          <div class="flex items-end justify-between gap-4">
-            <div>
-              <h1 class="font-display text-3xl">Wochenkarte</h1>
-              <p class="mt-1 text-sm text-ink-soft">Erscheint auf der Speisekarte und in der Online-Bestellung.</p>
-            </div>
-            <button id="add" class="btn-primary shrink-0 !px-4 !py-2.5">+ Gericht</button>
-          </div>
+          <h1 class="font-display text-3xl">Wochenkarte</h1>
+          <p class="mt-1 text-sm text-ink-soft">Foto der Wochenkarte hochladen – es erscheint oben auf der Speisekarte.</p>
 
-          <form id="editor" class="mt-5 hidden rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink/5" novalidate>
-            <input type="hidden" name="id" />
-            <p id="editor-title" class="font-display text-xl">Neues Gericht</p>
-            <label class="mt-4 block text-sm font-medium">
-              Name
-              <input name="name" required maxlength="120" class={field} placeholder="z. B. Risotto ai Funghi" />
+          <form id="upload" class="mt-5 rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink/5" novalidate>
+            <label class="upload-drop">
+              <input id="photo-input" name="photo" type="file" accept="image/*" class="sr-only" />
+              <img id="photo-preview" alt="" hidden class="max-h-72 w-full rounded-2xl object-contain" />
+              <span id="photo-hint" class="flex flex-col items-center gap-2 text-center">
+                <span class="grid size-14 place-items-center rounded-full bg-tomato/10 text-tomato">
+                  <svg viewBox="0 0 24 24" class="size-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3Z"/><circle cx="12" cy="13" r="3.5"/></svg>
+                </span>
+                <span class="font-semibold">Foto aufnehmen oder auswählen</span>
+                <span class="text-xs text-ink-soft">JPG oder PNG – große Fotos werden automatisch verkleinert</span>
+              </span>
             </label>
-            <label class="mt-3 block text-sm font-medium">
-              Beschreibung <span class="font-normal text-ink-soft">(optional)</span>
-              <textarea name="description" rows="2" maxlength="400" class={field}></textarea>
-            </label>
-            <div class="mt-3 grid grid-cols-2 gap-3">
-              <label class="block text-sm font-medium">
-                Preis (€)
-                <input name="price" inputmode="decimal" class={field} placeholder="14,50" />
-              </label>
-              <label class="block text-sm font-medium">
-                Zusatzstoffe
-                <input name="allergens" maxlength="60" class={field} placeholder="z. B. 8,16" />
-              </label>
-            </div>
+
             <fieldset class="mt-4">
-              <legend class="text-sm font-medium">Standort</legend>
+              <legend class="text-sm font-medium">Anzeigen bei</legend>
               <div class="mt-1.5 grid grid-cols-3 gap-2">
-                {[['both', 'Beide'], ['ledi', 'Ledi'], ['due', 'Ledi Due']].map(([value, label]) => (
+                {[['ledi', 'Ledi'], ['due', 'Ledi Due'], ['both', 'Beiden']].map(([value, label]) => (
                   <label class="cursor-pointer">
-                    <input type="radio" name="location" value={value} class="peer sr-only" checked={value === 'both'} />
+                    <input type="radio" name="location" value={value} class="peer sr-only" checked={value === 'ledi'} />
                     <span class="flex h-11 items-center justify-center rounded-xl border border-ink/10 text-sm font-semibold transition peer-checked:border-ink peer-checked:bg-ink peer-checked:text-cream">
                       {label}
                     </span>
@@ -118,19 +105,13 @@ const field =
                 ))}
               </div>
             </fieldset>
-            <label class="mt-4 flex items-center gap-3 text-sm font-medium">
-              <input type="checkbox" name="active" checked class="size-5 accent-[var(--color-basil)]" /> Sichtbar auf der Website
-            </label>
-            <p id="editor-error" class="mt-3 hidden text-sm text-tomato-dark" role="alert"></p>
-            <div class="mt-5 flex gap-2">
-              <button class="btn-primary flex-1 !py-3">Speichern</button>
-              <button type="button" id="cancel" class="btn-outline !py-3">Abbrechen</button>
-            </div>
+            <p id="upload-error" class="mt-3 hidden text-sm text-tomato-dark" role="alert"></p>
+            <button id="upload-button" class="btn-primary mt-5 w-full !py-3" disabled>Hochladen</button>
           </form>
 
-          <ul id="weekly-list" class="mt-5 space-y-3"></ul>
-          <p id="weekly-empty" class="mt-5 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
-            Noch keine Gerichte für diese Woche.
+          <ul id="weekly-list" class="mt-6 grid gap-4 sm:grid-cols-2"></ul>
+          <p id="weekly-empty" class="mt-6 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
+            Noch keine Wochenkarte hochgeladen.
           </p>
         </section>
 
@@ -220,6 +201,26 @@ const field =
     color: var(--color-ink);
     box-shadow: 0 1px 4px rgb(28 25 23 / 0.12);
   }
+  .upload-drop {
+    display: flex;
+    min-height: 11rem;
+    cursor: pointer;
+    align-items: center;
+    justify-content: center;
+    border-radius: 1.25rem;
+    border: 2px dashed rgb(28 25 23 / 0.15);
+    background: var(--color-cream);
+    padding: 1rem;
+    transition: border-color 0.2s ease;
+  }
+  .upload-drop:hover,
+  .upload-drop:focus-within {
+    border-color: var(--color-tomato);
+  }
+  #upload-button:disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
   #save-prices:disabled {
     opacity: 0.45;
     pointer-events: none;
@@ -227,15 +228,14 @@ const field =
 </style>
 
 <script>
-  import type { WeeklyItem } from '../lib/store';
+  import type { WeeklyPhoto } from '../lib/store';
 
   const dataEl = document.getElementById('admin-data');
   const list = document.getElementById('weekly-list');
   if (dataEl && list) {
-    const data = JSON.parse(dataEl.textContent || '{}') as { weekly: WeeklyItem[]; prices: Record<string, number> };
+    const data = JSON.parse(dataEl.textContent || '{}') as { weekly: WeeklyPhoto[]; prices: Record<string, number> };
     let weekly = data.weekly;
 
-    const euro = (n: number) => n.toLocaleString('de-DE', { style: 'currency', currency: 'EUR' });
     const parsePrice = (s: string) => {
       const clean = s.trim().replace(/\s|€/g, '').replace(',', '.');
       if (!clean) return null;
@@ -248,7 +248,6 @@ const field =
       t.style.opacity = '1';
       setTimeout(() => (t.style.opacity = '0'), 2200);
     };
-    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
     const send = async (url: string, method: string, body?: unknown) => {
       const res = await fetch(url, {
         method,
@@ -275,105 +274,138 @@ const field =
       if (saved) showTab(saved);
     } catch {}
 
-    // ---- Weekly menu ----
-    const editor = document.getElementById('editor') as HTMLFormElement;
-    const editorError = document.getElementById('editor-error')!;
-    const places = { both: 'Beide Standorte', ledi: 'Nur Ledi', due: 'Nur Ledi Due' };
+    // ---- Wochenkarte photos ----
+    const places = { ledi: 'Ledi', due: 'Ledi Due', both: 'Beiden' } as const;
+    const uploadForm = document.getElementById('upload') as HTMLFormElement;
+    const input = document.getElementById('photo-input') as HTMLInputElement;
+    const preview = document.getElementById('photo-preview') as HTMLImageElement;
+    const hint = document.getElementById('photo-hint')!;
+    const uploadButton = document.getElementById('upload-button') as HTMLButtonElement;
+    const uploadError = document.getElementById('upload-error')!;
+    let shrunk: Blob | null = null;
+
+    const showError = (msg: string) => {
+      uploadError.textContent = msg;
+      uploadError.classList.toggle('hidden', !msg);
+    };
+    const resetUpload = () => {
+      uploadForm.reset();
+      shrunk = null;
+      preview.hidden = true;
+      hint.hidden = false;
+      uploadButton.disabled = true;
+    };
+
+    // Phone photos are often 5–10 MB: scale to max. 2000 px and save as JPEG (a few hundred KB) before uploading.
+    const shrink = async (file: File) => {
+      const bitmap = await createImageBitmap(file, { imageOrientation: 'from-image' });
+      const scale = Math.min(1, 2000 / Math.max(bitmap.width, bitmap.height));
+      const canvas = document.createElement('canvas');
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+      const ctx = canvas.getContext('2d')!;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+      return new Promise<Blob>((resolve, reject) => canvas.toBlob((b) => (b ? resolve(b) : reject(new Error())), 'image/jpeg', 0.85));
+    };
+
+    input.addEventListener('change', async () => {
+      const file = input.files?.[0];
+      shrunk = null;
+      uploadButton.disabled = true;
+      showError('');
+      if (!file) return;
+      try {
+        shrunk = await shrink(file);
+        preview.src = URL.createObjectURL(shrunk);
+        preview.hidden = false;
+        hint.hidden = true;
+        uploadButton.disabled = false;
+      } catch {
+        showError('Dieses Bildformat wird nicht unterstützt – bitte ein JPG- oder PNG-Foto wählen.');
+      }
+    });
+
+    uploadForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!shrunk) return;
+      const fd = new FormData();
+      fd.append('photo', new File([shrunk], 'wochenkarte.jpg', { type: 'image/jpeg' }));
+      fd.append('location', String(new FormData(uploadForm).get('location')));
+      uploadButton.disabled = true;
+      uploadButton.textContent = 'Wird hochgeladen…';
+      try {
+        const res = await fetch('/api/admin/weekly', { method: 'POST', body: fd });
+        if (res.status === 401) location.reload();
+        if (!res.ok) throw new Error((await res.text()) || 'Fehler beim Hochladen');
+        weekly = [(await res.json()) as WeeklyPhoto, ...weekly];
+        render();
+        resetUpload();
+        toast('Wochenkarte hochgeladen ✓');
+      } catch (err) {
+        showError((err as Error).message);
+        uploadButton.disabled = false;
+      }
+      uploadButton.textContent = 'Hochladen';
+    });
 
     const render = () => {
       document.getElementById('weekly-empty')!.classList.toggle('hidden', weekly.length > 0);
       list.innerHTML = weekly
         .map(
           (w) => `
-        <li class="rounded-3xl bg-white p-4 ring-1 ring-ink/5 ${w.active ? '' : 'opacity-60'}">
-          <div class="flex items-start gap-3">
-            <div class="min-w-0 flex-1">
-              <p class="font-semibold">${esc(w.name)}</p>
-              ${w.description ? `<p class="mt-0.5 text-sm text-ink-soft">${esc(w.description)}</p>` : ''}
-              <p class="mt-2 flex flex-wrap gap-1.5 text-xs">
-                <span class="rounded-full bg-cream-dark px-2.5 py-1 font-medium">${places[w.location]}</span>
-                ${w.active ? '' : '<span class="rounded-full bg-ink/10 px-2.5 py-1 font-medium">Ausgeblendet</span>'}
-                ${w.price === null ? '<span class="rounded-full bg-gold/20 px-2.5 py-1 font-medium">Kein Preis – nicht bestellbar</span>' : ''}
-              </p>
+        <li class="overflow-hidden rounded-3xl bg-white ring-1 ring-ink/5 ${w.active ? '' : 'opacity-60'}">
+          <a href="/api/wochenkarte/${w.id}" target="_blank" rel="noopener" class="block bg-cream-dark">
+            <img src="/api/wochenkarte/${w.id}" alt="Wochenkarte" loading="lazy" class="h-56 w-full object-contain" />
+          </a>
+          <div class="space-y-3 p-4">
+            <p class="text-xs text-ink-soft">Hochgeladen am ${new Date(w.createdAt).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}${w.active ? '' : ' · <strong>ausgeblendet</strong>'}</p>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              Anzeigen bei
+              <select data-location="${w.id}" class="flex-1 rounded-lg border border-ink/10 bg-cream px-3 py-2 text-base">
+                ${Object.entries(places).map(([v, l]) => `<option value="${v}" ${v === w.location ? 'selected' : ''}>${l}</option>`).join('')}
+              </select>
+            </label>
+            <div class="flex gap-2">
+              <button data-toggle="${w.id}" class="btn-outline flex-1 !py-2">${w.active ? 'Ausblenden' : 'Einblenden'}</button>
+              <button data-delete="${w.id}" class="btn-outline !py-2 !text-tomato">Löschen</button>
             </div>
-            <p class="font-display shrink-0 text-xl">${w.price === null ? '–' : euro(w.price)}</p>
-          </div>
-          <div class="mt-3 flex gap-2 border-t border-ink/5 pt-3">
-            <button data-edit="${w.id}" class="btn-outline flex-1 !py-2">Bearbeiten</button>
-            <button data-toggle="${w.id}" class="btn-outline !py-2">${w.active ? 'Ausblenden' : 'Einblenden'}</button>
-            <button data-delete="${w.id}" class="btn-outline !py-2 !text-tomato" aria-label="Löschen">✕</button>
           </div>
         </li>`,
         )
         .join('');
     };
 
-    const openEditor = (item?: WeeklyItem) => {
-      editor.reset();
-      editorError.classList.add('hidden');
-      const f = editor.elements as unknown as Record<string, HTMLInputElement>;
-      document.getElementById('editor-title')!.textContent = item ? 'Gericht bearbeiten' : 'Neues Gericht';
-      f.id.value = item?.id ?? '';
-      f.name.value = item?.name ?? '';
-      (editor.elements.namedItem('description') as HTMLTextAreaElement).value = item?.description ?? '';
-      f.price.value = item?.price === null || item?.price === undefined ? '' : String(item.price).replace('.', ',');
-      f.allergens.value = item?.allergens ?? '';
-      editor.querySelector<HTMLInputElement>(`[name=location][value=${item?.location ?? 'both'}]`)!.checked = true;
-      f.active.checked = item?.active ?? true;
-      editor.classList.remove('hidden');
-      editor.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      f.name.focus({ preventScroll: true });
+    const replace = (photo: WeeklyPhoto) => {
+      weekly = weekly.map((w) => (w.id === photo.id ? photo : w));
+      render();
     };
 
-    document.getElementById('add')!.addEventListener('click', () => openEditor());
-    document.getElementById('cancel')!.addEventListener('click', () => editor.classList.add('hidden'));
-
-    editor.addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const fd = new FormData(editor);
-      const price = parsePrice(String(fd.get('price')));
-      const error = !String(fd.get('name')).trim() ? 'Bitte einen Namen eingeben.' : Number.isNaN(price) ? 'Preis bitte als Zahl, z. B. 14,50.' : '';
-      editorError.textContent = error;
-      editorError.classList.toggle('hidden', !error);
-      if (error) return;
-      const id = String(fd.get('id'));
-      const existing = weekly.find((w) => w.id === id);
+    list.addEventListener('change', async (e) => {
+      const select = (e.target as HTMLElement).closest<HTMLSelectElement>('[data-location]');
+      if (!select) return;
       try {
-        const saved: WeeklyItem = await send('/api/admin/weekly', 'POST', {
-          id: id || undefined,
-          name: fd.get('name'),
-          description: fd.get('description'),
-          price,
-          allergens: fd.get('allergens'),
-          location: fd.get('location'),
-          active: fd.get('active') === 'on',
-          sort: existing?.sort ?? weekly.length,
-        });
-        weekly = existing ? weekly.map((w) => (w.id === saved.id ? saved : w)) : [...weekly, saved];
-        render();
-        editor.classList.add('hidden');
+        replace(await send('/api/admin/weekly', 'PATCH', { id: select.dataset.location, location: select.value }));
         toast('Gespeichert ✓');
       } catch (err) {
-        editorError.textContent = (err as Error).message;
-        editorError.classList.remove('hidden');
+        toast((err as Error).message);
       }
     });
 
     list.addEventListener('click', async (e) => {
       const btn = (e.target as HTMLElement).closest('button');
       if (!btn) return;
-      const item = weekly.find((w) => w.id === (btn.dataset.edit ?? btn.dataset.toggle ?? btn.dataset.delete));
-      if (!item) return;
+      const photo = weekly.find((w) => w.id === (btn.dataset.toggle ?? btn.dataset.delete));
+      if (!photo) return;
       try {
-        if (btn.dataset.edit) openEditor(item);
-        else if (btn.dataset.toggle) {
-          const saved: WeeklyItem = await send('/api/admin/weekly', 'POST', { ...item, active: !item.active });
-          weekly = weekly.map((w) => (w.id === saved.id ? saved : w));
-          render();
-          toast(saved.active ? 'Wieder sichtbar' : 'Ausgeblendet');
-        } else if (btn.dataset.delete && confirm(`„${item.name}“ wirklich löschen?`)) {
-          await send(`/api/admin/weekly?id=${encodeURIComponent(item.id)}`, 'DELETE');
-          weekly = weekly.filter((w) => w.id !== item.id);
+        if (btn.dataset.toggle) {
+          replace(await send('/api/admin/weekly', 'PATCH', { id: photo.id, active: !photo.active }));
+          toast(photo.active ? 'Ausgeblendet' : 'Wieder sichtbar');
+        } else if (confirm('Dieses Foto wirklich löschen?')) {
+          await send(`/api/admin/weekly?id=${encodeURIComponent(photo.id)}`, 'DELETE');
+          weekly = weekly.filter((w) => w.id !== photo.id);
           render();
           toast('Gelöscht');
         }

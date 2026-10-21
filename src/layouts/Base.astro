@@ -97,7 +97,7 @@ const jsonLd = site && {
     </main>
     {site && <Footer location={site} />}
     {site && <MobileBar location={site} />}
-    <CookieBanner />
+    {!Astro.url.pathname.startsWith("/admin") && <CookieBanner />}
 
     <script>
       const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;

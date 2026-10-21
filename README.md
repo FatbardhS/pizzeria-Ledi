@@ -23,7 +23,7 @@ Die Seiten liegen einmal in `src/pages/[loc]/` und werden für beide Standorte e
 ## Inhalte ändern
 
 - **Name, Adresse, Telefon, E-Mail, Öffnungszeiten je Standort:** `locations` in `src/data/site.ts`
-- **Wochenkarte & Preise:** auf `/admin`
+- **Wochenkarte (Foto) & Preise:** auf `/admin`
 - **Bilder, Bewertungen, Social Media:** `src/data/site.ts`
 - **Speisekarte (für beide gleich):** `src/data/menu.ts`
 - **Impressum / Datenschutz:** `src/pages/[loc]/impressum.astro`, `src/pages/[loc]/datenschutz.astro` (Text noch einfügen)
@@ -36,7 +36,7 @@ Fotos liegen in `public/images` (von der alten Website übernommen, als WebP ver
 
 - `/ledi/bestellen`, `/due/bestellen` – Warenkorb; die Bestellung wird per WhatsApp an den jeweiligen Standort geschickt
   (Nummer: `whatsapp` je Standort in `src/data/site.ts`, Lieferbedingungen: `delivery`).
-- `/admin` – Wochenkarte pflegen und Preise der Speisekarte eintragen (nur Gerichte mit Preis sind bestellbar).
+- `/admin` – Foto der Wochenkarte hochladen (je Standort), Preise der Speisekarte eintragen (nur Gerichte mit Preis sind bestellbar), Passwort ändern.
 - Daten liegen in Supabase (`supabase/schema.sql`), gelesen über `/api/menu`.
 
 ### Einrichtung (einmalig)

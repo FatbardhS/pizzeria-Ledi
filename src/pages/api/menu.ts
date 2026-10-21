@@ -1,14 +1,17 @@
-// Public: this week's dishes and the menu prices, read by the Speisekarte and the order page.
+// Public: Wochenkarte photos and menu prices, read by the Speisekarte and the order page.
 import type { APIRoute } from 'astro';
-import { listPrices, listWeekly } from '../../lib/store';
+import { listPrices, listWeeklyPhotos } from '../../lib/store';
 
 export const prerender = false;
 
 export const GET: APIRoute = async () => {
   try {
-    const [weekly, prices] = await Promise.all([listWeekly(), listPrices()]);
+    const [photos, prices] = await Promise.all([listWeeklyPhotos(), listPrices()]);
     return Response.json(
-      { weekly: weekly.filter((w) => w.active).map(({ active, sort, ...w }) => w), prices },
+      {
+        weekly: photos.filter((p) => p.active).map((p) => ({ id: p.id, location: p.location, url: `/api/wochenkarte/${p.id}` })),
+        prices,
+      },
       {
         headers: {
           // Browsers always ask again; Vercel's CDN reuses the answer for 30 s, so admin changes show up within a minute.
