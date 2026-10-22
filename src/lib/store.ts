@@ -106,17 +106,17 @@ export async function deleteWeeklyPhoto(id: string): Promise<void> {
 }
 
 /** The image itself, for /api/wochenkarte/[id] (the bucket is private). */
-export async function getWeeklyPhotoFile(id: string): Promise<{ bytes: Uint8Array; type: string } | null> {
+export async function getWeeklyPhotoFile(id: string): Promise<{ bytes: Uint8Array; type: string; active: boolean } | null> {
   const supabase = db();
   if (!supabase) {
     const photo = import.meta.env.DEV ? memory.photos.find((p) => p.id === id) : undefined;
-    return photo ? { bytes: photo.bytes, type: photo.type } : null;
+    return photo ? { bytes: photo.bytes, type: photo.type, active: photo.active } : null;
   }
-  const { data } = await supabase.from('weekly_photos').select('path').eq('id', id).maybeSingle();
+  const { data } = await supabase.from('weekly_photos').select('path, active').eq('id', id).maybeSingle();
   if (!data?.path) return null;
   const file = await supabase.storage.from(BUCKET).download(data.path);
   if (file.error || !file.data) return null;
-  return { bytes: new Uint8Array(await file.data.arrayBuffer()), type: file.data.type || 'image/jpeg' };
+  return { bytes: new Uint8Array(await file.data.arrayBuffer()), type: file.data.type || 'image/jpeg', active: Boolean(data.active) };
 }
 
 export async function listPrices(): Promise<Record<string, number>> {
@@ -153,15 +153,22 @@ export async function savePrices(prices: Record<string, number | null>): Promise
   }
 }
 
-// ---- Admin settings (e.g. the password hash) ----
-const settings = new Map<string, string>();
+// ---- Admin settings (password hash, session epoch, login attempts) ----
+const settings = new Map<string, { value: string; updatedAt: number }>();
+const missingTable = (code?: string) => code === '42P01' || code === 'PGRST205';
 
-/** Returns null when the setting (or the admin_settings table) does not exist yet. */
+/**
+ * Returns null when the setting does not exist (or the admin_settings table was never created).
+ * Any other database error throws, so callers fail closed instead of falling back to defaults.
+ */
 export async function getSetting(key: string): Promise<string | null> {
   const supabase = db();
-  if (!supabase) return import.meta.env.DEV ? (settings.get(key) ?? null) : null;
+  if (!supabase) return import.meta.env.DEV ? (settings.get(key)?.value ?? null) : null;
   const { data, error } = await supabase.from('admin_settings').select('value').eq('key', key).maybeSingle();
-  if (error) return null;
+  if (error) {
+    if (missingTable(error.code)) return null;
+    throw new Error(`admin_settings: ${error.message}`);
+  }
   return data?.value ?? null;
 }
 
@@ -169,14 +176,33 @@ export async function setSetting(key: string, value: string): Promise<void> {
   const supabase = db();
   if (!supabase) {
     devOnly();
-    settings.set(key, value);
+    settings.set(key, { value, updatedAt: Date.now() });
     return;
   }
   const { error } = await supabase.from('admin_settings').upsert({ key, value, updated_at: new Date().toISOString() });
   if (error)
     throw new Error(
-      error.code === '42P01' || /admin_settings/.test(error.message)
+      missingTable(error.code) || /admin_settings/.test(error.message)
         ? 'Die Tabelle admin_settings fehlt – bitte den SQL-Code aus supabase/schema.sql erneut in Supabase ausführen.'
         : error.message,
     );
+}
+
+export async function deleteSetting(key: string): Promise<void> {
+  const supabase = db();
+  if (!supabase) {
+    settings.delete(key);
+    return;
+  }
+  await supabase.from('admin_settings').delete().eq('key', key);
+}
+
+/** Removes settings whose key starts with `prefix` and that were last written before `before`. */
+export async function pruneSettings(prefix: string, before: Date): Promise<void> {
+  const supabase = db();
+  if (!supabase) {
+    for (const [k, v] of settings) if (k.startsWith(prefix) && v.updatedAt < before.getTime()) settings.delete(k);
+    return;
+  }
+  await supabase.from('admin_settings').delete().like('key', `${prefix}%`).lt('updated_at', before.toISOString());
 }

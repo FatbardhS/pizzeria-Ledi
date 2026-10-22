@@ -9,7 +9,15 @@ import { isConfigured, listPrices, listWeeklyPhotos } from '../lib/store';
 export const prerender = false;
 
 const loggedIn = await isAdmin(Astro.cookies);
-const failed = Astro.url.searchParams.has('fehler');
+const loginError = Astro.url.searchParams.has('gesperrt')
+  ? 'Zu viele Fehlversuche – bitte in 15 Minuten erneut versuchen.'
+  : Astro.url.searchParams.has('serverfehler')
+    ? 'Anmeldung gerade nicht möglich (Datenbank nicht erreichbar). Bitte später erneut versuchen.'
+    : Astro.url.searchParams.has('fehler')
+      ? 'Falsches Passwort.'
+      : '';
+// Never cache this page anywhere: it is different for logged-in staff.
+Astro.response.headers.set('Cache-Control', 'private, no-store');
 const noPassword = !(await hasPassword());
 const configured = isConfigured();
 const [weekly, prices] = loggedIn ? await Promise.all([listWeeklyPhotos(), listPrices()]) : [[], {}];
@@ -45,7 +53,7 @@ const field =
                 Passwort
                 <input name="password" type="password" autocomplete="current-password" required autofocus class={field} />
               </label>
-              {failed && <p class="mt-3 text-sm text-tomato-dark">Falsches Passwort.</p>}
+              {loginError && <p class="mt-3 text-sm text-tomato-dark" role="alert">{loginError}</p>}
               <button class="btn-primary mt-6 w-full !py-3.5">Anmelden</button>
             </>
           )}
@@ -127,7 +135,7 @@ const field =
               <input name="current" type="password" autocomplete="current-password" required class={field} />
             </label>
             <label class="block text-sm font-medium">
-              Neues Passwort <span class="font-normal text-ink-soft">(mind. 8 Zeichen)</span>
+              Neues Passwort <span class="font-normal text-ink-soft">(mind. 10 Zeichen)</span>
               <input name="next" type="password" autocomplete="new-password" minlength="8" required class={field} />
             </label>
             <label class="block text-sm font-medium">
@@ -136,6 +144,13 @@ const field =
             </label>
             <p id="password-error" class="hidden text-sm text-tomato-dark" role="alert"></p>
             <button class="btn-primary w-full !py-3">Passwort speichern</button>
+          </form>
+
+          <form method="post" action="/api/admin/login" class="mt-6 rounded-3xl bg-white p-5 ring-1 ring-ink/5">
+            <input type="hidden" name="logout" value="all" />
+            <p class="font-semibold">Überall abmelden</p>
+            <p class="mt-1 text-sm text-ink-soft">Meldet alle Geräte ab, z. B. wenn ein Handy verloren ging. Anmeldungen laufen sonst nach 7 Tagen ab.</p>
+            <button class="btn-outline mt-4 w-full !py-3">Alle Geräte abmelden</button>
           </form>
         </section>
 
@@ -482,7 +497,7 @@ const field =
       const fd = new FormData(pwForm);
       const next = String(fd.get('next'));
       const msg =
-        next.trim().length < 8 ? 'Das neue Passwort muss mindestens 8 Zeichen haben.'
+        next.trim().length < 10 ? 'Das neue Passwort muss mindestens 10 Zeichen haben.'
         : next !== String(fd.get('repeat')) ? 'Die neuen Passwörter stimmen nicht überein.'
         : '';
       pwError.textContent = msg;
