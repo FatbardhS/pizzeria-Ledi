@@ -116,18 +116,17 @@ const highlights = [
       <div class="reveal flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
         <div>
           <p class="eyebrow">Aus dem Steinofen</p>
-          <h2 class="font-display mt-1 text-4xl md:text-5xl">Unsere Lieblinge</h2>
+          <h2 class="font-display mt-1 text-[2rem] leading-tight sm:text-4xl md:text-5xl">Unsere Lieblinge</h2>
         </div>
         <a href={`/${site.id}/speisekarte`} class="group inline-flex items-center gap-2 font-semibold text-tomato">
           Zur ganzen Karte <Icon name="arrow" class="size-4 transition group-hover:translate-x-1" />
         </a>
       </div>
 
-      <!-- Swipe on phones, grid on larger screens -->
-      <div data-stagger="110" class="scrollbar-none -mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-2 sm:mx-0 sm:grid sm:grid-cols-2 sm:overflow-visible sm:px-0 lg:grid-cols-4">
+      <div data-stagger="110" class="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {
           favourites.map((p, i) => (
-            <article class="reveal flex w-[78%] shrink-0 snap-start flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5 transition hover:-translate-y-1 hover:shadow-xl sm:w-auto">
+            <article class="reveal flex flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5 transition hover:-translate-y-1 hover:shadow-xl">
               <div class="flex items-center justify-between">
                 <span class="font-display text-5xl text-tomato/20">{p.nr}</span>
                 {p.tags?.includes('Haus-Tipp') && (
@@ -169,12 +168,12 @@ const highlights = [
   <section class="pb-20 md:pb-28">
     <div class="container-page reveal text-center">
       <p class="eyebrow">Bewertungen</p>
-      <h2 class="font-display mt-1 text-4xl md:text-5xl">{site.id === 'due' ? 'Was Gäste über Ledi sagen' : 'Was unsere Gäste sagen'}</h2>
+      <h2 class="font-display mt-1 text-[2rem] leading-tight sm:text-4xl md:text-5xl">{site.id === 'due' ? 'Was Gäste über Ledi sagen' : 'Was unsere Gäste sagen'}</h2>
     </div>
-    <div data-stagger="110" class="scrollbar-none container-page mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-4">
+    <div data-stagger="110" class="container-page mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {
         reviews.map((r) => (
-          <figure class="reveal flex w-[85%] shrink-0 snap-center flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5 md:w-auto">
+          <figure class="reveal flex flex-col rounded-3xl bg-white p-6 shadow-sm ring-1 ring-ink/5">
             <div class="flex gap-0.5 text-gold">
               {Array.from({ length: 5 }).map(() => <Icon name="star" class="size-4" />)}
             </div>
