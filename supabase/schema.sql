@@ -32,3 +32,22 @@ create table if not exists admin_settings (
   updated_at timestamptz not null default now()
 );
 alter table admin_settings enable row level security;
+
+-- Promotions (Aktionen) shown as a card on the homepage between their start and end date.
+-- Optional photos live in the same private bucket "wochenkarte", under "aktionen/".
+create table if not exists promotions (
+  id         uuid primary key default gen_random_uuid(),
+  eyebrow    text not null default '',
+  title      text not null,
+  highlight  text not null default '',
+  body       text not null default '',
+  starts_on  date not null,
+  ends_on    date not null,
+  location   text not null default 'both' check (location in ('both', 'ledi', 'due')),
+  theme      text not null default 'none' check (theme in ('none', 'christmas', 'newyear', 'easter', 'valentine', 'summer', 'autumn')),
+  photo_path text,
+  active     boolean not null default true,
+  created_at timestamptz not null default now(),
+  check (ends_on >= starts_on)
+);
+alter table promotions enable row level security;

@@ -4,7 +4,7 @@ import Base from '../layouts/Base.astro';
 import Icon from '../components/Icon.astro';
 import { menu, priceOptions } from '../data/menu';
 import { isAdmin, hasPassword } from '../lib/auth';
-import { isConfigured, listPrices, listWeeklyPhotos } from '../lib/store';
+import { berlinToday, isConfigured, listPrices, listPromotions, listWeeklyPhotos } from '../lib/store';
 
 export const prerender = false;
 
@@ -21,6 +21,19 @@ Astro.response.headers.set('Cache-Control', 'private, no-store');
 const noPassword = !(await hasPassword());
 const configured = isConfigured();
 const [weekly, prices] = loggedIn ? await Promise.all([listWeeklyPhotos(), listPrices()]) : [[], {}];
+// A missing promotions table must not break the rest of the page; the Aktionen tab then shows the error.
+let promoError = '';
+const promotions = loggedIn ? await listPromotions().catch((e: Error) => ((promoError = e.message), [])) : [];
+const today = berlinToday();
+const themes = {
+  none: 'Kein Motiv',
+  christmas: 'Weihnachten',
+  newyear: 'Silvester / Neujahr',
+  easter: 'Ostern',
+  valentine: 'Valentinstag / Muttertag',
+  summer: 'Sommer',
+  autumn: 'Herbst',
+};
 
 const priceMenu = menu.map((cat) => ({
   id: cat.id,
@@ -78,8 +91,9 @@ const field =
           </p>
         )}
 
-        <nav class="mt-6 grid grid-cols-3 rounded-full bg-cream-dark p-1" role="tablist">
-          <button role="tab" data-tab="weekly" aria-selected="true" class="tab">Wochenkarte</button>
+        <nav class="mt-6 grid grid-cols-4 rounded-full bg-cream-dark p-1" role="tablist">
+          <button role="tab" data-tab="weekly" aria-selected="true" class="tab">Wochen&shy;karte</button>
+          <button role="tab" data-tab="promos" aria-selected="false" class="tab">Aktionen</button>
           <button role="tab" data-tab="prices" aria-selected="false" class="tab">Preise</button>
           <button role="tab" data-tab="account" aria-selected="false" class="tab">Konto</button>
         </nav>
@@ -123,6 +137,94 @@ const field =
           <p id="weekly-empty" class="mt-6 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
             Noch keine Wochenkarte hochgeladen.
           </p>
+        </section>
+
+        <!-- Promotions -->
+        <section data-panel="promos" class="mt-6" hidden>
+          <h1 class="font-display text-3xl">Aktionen</h1>
+          <p class="mt-1 text-sm text-ink-soft">
+            Eine Aktion erscheint als Karte auf der Startseite – automatisch vom Start- bis zum Enddatum.
+          </p>
+          {promoError && <p class="mt-4 rounded-2xl bg-tomato/10 px-4 py-3 text-sm text-tomato-dark">{promoError}</p>}
+
+          <form id="promo-form" class="mt-5 space-y-4 rounded-3xl bg-white p-5 shadow-lg ring-1 ring-ink/5" novalidate>
+            <div class="flex items-center justify-between gap-3">
+              <p id="promo-form-title" class="font-display text-xl">Neue Aktion</p>
+              <button type="button" id="promo-cancel" class="text-sm font-semibold text-ink-soft underline" hidden>Abbrechen</button>
+            </div>
+            <input type="hidden" name="id" />
+            <label class="block text-sm font-medium">
+              Kleine Zeile oben <span class="font-normal text-ink-soft">(optional)</span>
+              <input name="eyebrow" maxlength="60" placeholder="Weihnachten bei Ledi" class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Überschrift
+              <input name="title" maxlength="120" required placeholder="Ihre Weihnachtsfeier" class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Rot hervorgehoben <span class="font-normal text-ink-soft">(optional, steht hinter der Überschrift)</span>
+              <input name="highlight" maxlength="80" placeholder="im Steinofen-Duft." class={field} />
+            </label>
+            <label class="block text-sm font-medium">
+              Text
+              <textarea name="body" maxlength="400" rows="3" placeholder="Gruppen ab 10 Personen: 3-Gänge-Menü …" class={field}></textarea>
+            </label>
+            <div class="grid grid-cols-2 gap-3">
+              <label class="block text-sm font-medium">
+                Start
+                <input name="startsOn" type="date" required class={field} />
+              </label>
+              <label class="block text-sm font-medium">
+                Ende
+                <input name="endsOn" type="date" required class={field} />
+              </label>
+            </div>
+            <fieldset>
+              <legend class="text-sm font-medium">Anzeigen bei</legend>
+              <div class="mt-1.5 grid grid-cols-3 gap-2">
+                {[['ledi', 'Ledi'], ['due', 'Ledi Due'], ['both', 'Beiden']].map(([value, label]) => (
+                  <label class="cursor-pointer">
+                    <input type="radio" name="location" value={value} class="peer sr-only" checked={value === 'both'} />
+                    <span class="flex h-11 items-center justify-center rounded-xl border border-ink/10 text-sm font-semibold transition peer-checked:border-ink peer-checked:bg-ink peer-checked:text-cream">
+                      {label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <label class="block text-sm font-medium">
+              Motiv <span class="font-normal text-ink-soft">(kleines Symbol auf der Karte)</span>
+              <select name="theme" class={field}>
+                {Object.entries(themes).map(([value, label]) => <option value={value}>{label}</option>)}
+              </select>
+            </label>
+            <div>
+              <p class="text-sm font-medium">Foto <span class="font-normal text-ink-soft">(optional)</span></p>
+              <label class="upload-drop mt-1.5 !min-h-28">
+                <input id="promo-photo" type="file" accept="image/*" class="sr-only" />
+                <img id="promo-preview" alt="" hidden class="max-h-48 w-full rounded-2xl object-cover" />
+                <span id="promo-photo-hint" class="text-sm font-semibold text-ink-soft">Foto auswählen</span>
+              </label>
+              <button type="button" id="promo-photo-remove" class="mt-2 text-sm font-semibold text-tomato" hidden>Foto entfernen</button>
+            </div>
+            <label class="flex items-center gap-2 text-sm font-medium">
+              <input name="active" type="checkbox" checked class="size-4 accent-tomato" /> Sichtbar
+            </label>
+            <p id="promo-error" class="hidden text-sm text-tomato-dark" role="alert"></p>
+            <button id="promo-save" class="btn-primary w-full !py-3">Aktion speichern</button>
+          </form>
+
+          <ul id="promo-list" class="mt-6 space-y-3"></ul>
+          <p id="promo-empty" class="mt-6 hidden rounded-3xl border border-dashed border-ink/15 p-8 text-center text-ink-soft">
+            Noch keine Aktion angelegt.
+          </p>
+
+          <h2 class="font-display mt-12 text-2xl">Feiertage & Anlässe</h2>
+          <p class="mt-1 text-sm text-ink-soft">
+            Die nächsten 12 Monate in Deutschland. <strong>Feiertag</strong> = gesetzlicher Feiertag in Berlin.
+            „Aktion planen“ füllt das Formular oben mit passenden Daten aus.
+          </p>
+          <ul id="holiday-list" class="mt-4 divide-y divide-ink/5 rounded-2xl bg-white ring-1 ring-ink/5"></ul>
         </section>
 
         <!-- Account -->
@@ -203,7 +305,7 @@ const field =
     )
   }
 
-  <script is:inline type="application/json" id="admin-data" set:html={JSON.stringify({ weekly, prices }).replace(/</g, '\\u003c')} />
+  <script is:inline type="application/json" id="admin-data" set:html={JSON.stringify({ weekly, prices, promotions, today, themes }).replace(/</g, '\\u003c')} />
   <div id="toast" class="pointer-events-none fixed top-4 left-1/2 z-[95] -translate-x-1/2 rounded-full bg-ink px-5 py-2.5 text-sm font-medium text-cream opacity-0 shadow-lg transition"></div>
 </Base>
 
@@ -248,12 +350,19 @@ const field =
 </style>
 
 <script>
-  import type { WeeklyPhoto } from '../lib/store';
+  import type { Promotion, WeeklyPhoto } from '../lib/store';
+  import { suggestedStart, upcomingHolidays } from '../lib/holidays';
 
   const dataEl = document.getElementById('admin-data');
   const list = document.getElementById('weekly-list');
   if (dataEl && list) {
-    const data = JSON.parse(dataEl.textContent || '{}') as { weekly: WeeklyPhoto[]; prices: Record<string, number> };
+    const data = JSON.parse(dataEl.textContent || '{}') as {
+      weekly: WeeklyPhoto[];
+      prices: Record<string, number>;
+      promotions: Promotion[];
+      today: string;
+      themes: Record<string, string>;
+    };
     let weekly = data.weekly;
 
     const parsePrice = (s: string) => {
@@ -434,6 +543,211 @@ const field =
       }
     });
     render();
+
+    // ---- Promotions ----
+    const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+    const dateDe = (d: string, weekday = false) =>
+      new Date(`${d}T12:00:00`).toLocaleDateString('de-DE', { weekday: weekday ? 'short' : undefined, day: '2-digit', month: '2-digit', year: 'numeric' });
+    const today = data.today;
+    let promos = data.promotions;
+    const promoForm = document.getElementById('promo-form') as HTMLFormElement;
+    const promoList = document.getElementById('promo-list')!;
+    const promoError = document.getElementById('promo-error')!;
+    const promoSave = document.getElementById('promo-save') as HTMLButtonElement;
+    const promoPhoto = document.getElementById('promo-photo') as HTMLInputElement;
+    const promoPreview = document.getElementById('promo-preview') as HTMLImageElement;
+    const promoHint = document.getElementById('promo-photo-hint')!;
+    const promoRemove = document.getElementById('promo-photo-remove')!;
+    const promoCancel = document.getElementById('promo-cancel')!;
+    const promoTitle = document.getElementById('promo-form-title')!;
+    let promoShrunk: Blob | null = null;
+    let removePhoto = false;
+    const el = (name: string) => promoForm.elements.namedItem(name) as HTMLInputElement;
+
+    const promoStatus = (p: Promotion) =>
+      !p.active ? ['Ausgeblendet', 'bg-ink/10 text-ink-soft']
+      : p.endsOn < today ? ['Abgelaufen', 'bg-ink/10 text-ink-soft']
+      : p.startsOn > today ? ['Geplant', 'bg-gold/15 text-[#8a6418]']
+      : ['Läuft jetzt', 'bg-basil/10 text-basil'];
+
+    const showPhoto = (src: string | null) => {
+      promoPreview.hidden = !src;
+      if (src) promoPreview.src = src;
+      promoHint.hidden = Boolean(src);
+      promoRemove.hidden = !src;
+    };
+    const showPromoError = (msg: string) => {
+      promoError.textContent = msg;
+      promoError.classList.toggle('hidden', !msg);
+    };
+
+    const fillForm = (p: Partial<Promotion>) => {
+      promoForm.reset();
+      el('id').value = p.id ?? '';
+      el('eyebrow').value = p.eyebrow ?? '';
+      el('title').value = p.title ?? '';
+      el('highlight').value = p.highlight ?? '';
+      el('body').value = p.body ?? '';
+      el('startsOn').value = p.startsOn ?? '';
+      el('endsOn').value = p.endsOn ?? '';
+      el('theme').value = p.theme ?? 'none';
+      el('active').checked = p.active ?? true;
+      promoForm.querySelectorAll<HTMLInputElement>('[name="location"]').forEach((r) => (r.checked = r.value === (p.location ?? 'both')));
+      promoShrunk = null;
+      removePhoto = false;
+      showPhoto(p.hasPhoto && p.id ? `/api/aktionen/${p.id}?v=${Date.now()}` : null);
+      promoTitle.textContent = p.id ? 'Aktion bearbeiten' : 'Neue Aktion';
+      promoCancel.hidden = !p.id && !p.title;
+      showPromoError('');
+    };
+
+    promoPhoto.addEventListener('change', async () => {
+      const file = promoPhoto.files?.[0];
+      if (!file) return;
+      try {
+        promoShrunk = await shrink(file);
+        removePhoto = false;
+        showPhoto(URL.createObjectURL(promoShrunk));
+        showPromoError('');
+      } catch {
+        showPromoError('Dieses Bildformat wird nicht unterstützt – bitte ein JPG- oder PNG-Foto wählen.');
+      }
+    });
+    promoRemove.addEventListener('click', () => {
+      promoShrunk = null;
+      removePhoto = true;
+      promoPhoto.value = '';
+      showPhoto(null);
+    });
+    promoCancel.addEventListener('click', () => fillForm({}));
+
+    promoForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const fd = new FormData(promoForm);
+      const start = String(fd.get('startsOn'));
+      const end = String(fd.get('endsOn'));
+      const msg =
+        !String(fd.get('title')).trim() ? 'Bitte eine Überschrift eingeben.'
+        : !start || !end ? 'Bitte Start- und Enddatum wählen.'
+        : end < start ? 'Das Enddatum liegt vor dem Startdatum.'
+        : '';
+      showPromoError(msg);
+      if (msg) return;
+      fd.set('active', el('active').checked ? '1' : '0');
+      if (promoShrunk) fd.set('photo', new File([promoShrunk], 'aktion.jpg', { type: 'image/jpeg' }));
+      if (removePhoto) fd.set('removePhoto', '1');
+      promoSave.disabled = true;
+      promoSave.textContent = 'Wird gespeichert…';
+      try {
+        const res = await fetch('/api/admin/promotions', { method: 'POST', body: fd });
+        if (res.status === 401) location.reload();
+        if (!res.ok) throw new Error((await res.text()) || 'Fehler beim Speichern');
+        const saved = (await res.json()) as Promotion;
+        promos = [...promos.filter((p) => p.id !== saved.id), saved].sort((a, b) => a.startsOn.localeCompare(b.startsOn));
+        renderPromos();
+        fillForm({});
+        toast('Aktion gespeichert ✓');
+      } catch (err) {
+        showPromoError((err as Error).message);
+      }
+      promoSave.disabled = false;
+      promoSave.textContent = 'Aktion speichern';
+    });
+
+    const renderPromos = () => {
+      document.getElementById('promo-empty')!.classList.toggle('hidden', promos.length > 0);
+      promoList.innerHTML = promos
+        .map((p) => {
+          const [label, cls] = promoStatus(p);
+          return `
+        <li class="flex gap-4 rounded-3xl bg-white p-4 ring-1 ring-ink/5 ${p.active && p.endsOn >= today ? '' : 'opacity-60'}">
+          ${p.hasPhoto ? `<img src="/api/aktionen/${p.id}?v=${encodeURIComponent(p.createdAt)}" alt="" loading="lazy" class="size-20 shrink-0 rounded-2xl object-cover" />` : ''}
+          <div class="min-w-0 flex-1">
+            <div class="flex flex-wrap items-center gap-2">
+              <span class="rounded-full px-2.5 py-0.5 text-xs font-semibold ${cls}">${label}</span>
+              <span class="text-xs text-ink-soft">${dateDe(p.startsOn)} – ${dateDe(p.endsOn)} · ${places[p.location]}</span>
+            </div>
+            <p class="mt-1.5 font-semibold">${esc(p.title)} <span class="text-tomato">${esc(p.highlight)}</span></p>
+            <p class="text-xs text-ink-soft">${esc(data.themes[p.theme] ?? '')}</p>
+            <div class="mt-3 flex flex-wrap gap-2">
+              <button data-promo-edit="${p.id}" class="btn-outline !px-4 !py-2">Bearbeiten</button>
+              <button data-promo-toggle="${p.id}" class="btn-outline !px-4 !py-2">${p.active ? 'Ausblenden' : 'Einblenden'}</button>
+              <button data-promo-delete="${p.id}" class="btn-outline !px-4 !py-2 !text-tomato">Löschen</button>
+            </div>
+          </div>
+        </li>`;
+        })
+        .join('');
+      renderHolidays();
+    };
+
+    promoList.addEventListener('click', async (e) => {
+      const btn = (e.target as HTMLElement).closest('button');
+      const promo = promos.find((p) => p.id === (btn?.dataset.promoEdit ?? btn?.dataset.promoToggle ?? btn?.dataset.promoDelete));
+      if (!btn || !promo) return;
+      if (btn.dataset.promoEdit) {
+        fillForm(promo);
+        promoForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        return;
+      }
+      try {
+        if (btn.dataset.promoToggle) {
+          const fd = new FormData();
+          for (const [k, v] of Object.entries(promo)) if (typeof v === 'string') fd.set(k, v);
+          fd.set('active', promo.active ? '0' : '1');
+          const res = await fetch('/api/admin/promotions', { method: 'POST', body: fd });
+          if (res.status === 401) location.reload();
+          if (!res.ok) throw new Error((await res.text()) || 'Fehler beim Speichern');
+          const saved = (await res.json()) as Promotion;
+          promos = promos.map((p) => (p.id === saved.id ? saved : p));
+          renderPromos();
+          toast(saved.active ? 'Wieder sichtbar' : 'Ausgeblendet');
+        } else if (confirm('Diese Aktion wirklich löschen?')) {
+          await send(`/api/admin/promotions?id=${encodeURIComponent(promo.id)}`, 'DELETE');
+          promos = promos.filter((p) => p.id !== promo.id);
+          renderPromos();
+          if (el('id').value === promo.id) fillForm({});
+          toast('Gelöscht');
+        }
+      } catch (err) {
+        toast((err as Error).message);
+      }
+    });
+
+    // ---- Holidays ----
+    const holidays = upcomingHolidays(today);
+    const holidayList = document.getElementById('holiday-list')!;
+    const daysUntil = (d: string) => Math.round((Date.parse(d) - Date.parse(today)) / 86_400_000);
+    const renderHolidays = () => {
+      holidayList.innerHTML = holidays
+        .map((h, i) => {
+          const n = daysUntil(h.date);
+          const covered = promos.some((p) => p.active && p.startsOn <= h.date && h.date <= p.endsOn);
+          return `
+        <li class="flex items-center gap-3 px-4 py-3">
+          <div class="w-24 shrink-0 text-xs text-ink-soft">${dateDe(h.date, true)}</div>
+          <div class="min-w-0 flex-1">
+            <p class="text-sm font-medium">${h.name}</p>
+            <p class="mt-0.5 flex flex-wrap gap-1.5 text-xs text-ink-soft">
+              ${n === 0 ? '<strong class="text-tomato">heute</strong>' : n === 1 ? 'morgen' : `in ${n} Tagen`}
+              ${h.publicHoliday ? '<span class="rounded-full bg-tomato/10 px-2 font-semibold text-tomato-dark">Feiertag</span>' : ''}
+              ${covered ? '<span class="rounded-full bg-basil/10 px-2 font-semibold text-basil">Aktion geplant</span>' : ''}
+            </p>
+          </div>
+          <button data-holiday="${i}" class="btn-outline shrink-0 !px-3 !py-1.5 !text-xs">Aktion planen</button>
+        </li>`;
+        })
+        .join('');
+    };
+    holidayList.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-holiday]');
+      const h = btn && holidays[Number(btn.dataset.holiday)];
+      if (!h) return;
+      fillForm({ eyebrow: h.eyebrow, title: h.name, theme: h.theme, startsOn: suggestedStart(h, today), endsOn: h.promoEnd ?? h.date });
+      promoForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      el('title').focus({ preventScroll: true });
+    });
+    renderPromos();
 
     // ---- Prices ----
     const inputs = [...document.querySelectorAll<HTMLInputElement>('[data-key]')];
